@@ -1,0 +1,15 @@
+# Claude Code
+.claude/
+
+# Windows
+nul
+Thumbs.db
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo

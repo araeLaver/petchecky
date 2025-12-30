@@ -1,0 +1,66 @@
+import type { Metadata, Viewport } from "next";
+import { Noto_Sans_KR } from "next/font/google";
+import "./globals.css";
+
+const notoSansKr = Noto_Sans_KR({
+  variable: "--font-noto-sans-kr",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
+export const metadata: Metadata = {
+  title: "펫체키 - AI가 체크하는 우리 아이 건강",
+  description: "반려동물이 아파 보일 때, AI가 증상을 분석하고 적절한 대응 방법을 알려드립니다. 강아지, 고양이 건강 상담 서비스.",
+  keywords: ["펫체키", "반려동물", "AI", "건강", "증상", "상담", "강아지", "고양이", "수의사", "펫케어"],
+  authors: [{ name: "PetChecky" }],
+  creator: "PetChecky",
+  publisher: "PetChecky",
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
+  openGraph: {
+    title: "펫체키 - AI가 체크하는 우리 아이 건강",
+    description: "반려동물이 아파 보일 때, AI가 증상을 분석하고 적절한 대응 방법을 알려드립니다.",
+    url: "https://petchecky.com",
+    siteName: "펫체키",
+    locale: "ko_KR",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "펫체키 - AI가 체크하는 우리 아이 건강",
+    description: "반려동물이 아파 보일 때, AI가 증상을 분석하고 적절한 대응 방법을 알려드립니다.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
+  manifest: "/manifest.json",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  themeColor: "#3B82F6",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="ko">
+      <body className={`${notoSansKr.variable} font-sans antialiased`}>
+        {children}
+      </body>
+    </html>
+  );
+}

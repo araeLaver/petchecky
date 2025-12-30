@@ -1,0 +1,27 @@
+{
+  "name": "펫체키 - AI 반려동물 건강 상담",
+  "short_name": "펫체키",
+  "description": "AI가 체크하는 우리 아이 건강. 반려동물 증상 분석 및 대응 방법 안내 서비스.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#EFF6FF",
+  "theme_color": "#3B82F6",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["health", "lifestyle", "utilities"],
+  "lang": "ko",
+  "dir": "ltr"
+}
