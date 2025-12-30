@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { PetProfile } from "@/app/page";
+import QuickSymptoms from "./QuickSymptoms";
 
 interface Message {
   id: string;
@@ -12,19 +13,38 @@ interface Message {
 
 interface ChatInterfaceProps {
   petProfile: PetProfile;
+  onBack: () => void;
+  onSaveChat: (messages: Message[], severity?: "low" | "medium" | "high") => void;
+  initialMessages?: Message[];
 }
 
-export default function ChatInterface({ petProfile }: ChatInterfaceProps) {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "welcome",
-      role: "assistant",
-      content: `안녕하세요! ${petProfile.name}의 건강을 체크해드릴게요. 🐾\n\n어떤 증상이 있나요? 자세히 말씀해주시면 더 정확한 분석이 가능해요.`,
-    },
-  ]);
+export default function ChatInterface({ petProfile, onBack, onSaveChat, initialMessages }: ChatInterfaceProps) {
+  const [messages, setMessages] = useState<Message[]>(
+    initialMessages || [
+      {
+        id: "welcome",
+        role: "assistant",
+        content: `안녕하세요! ${petProfile.name}의 건강을 체크해드릴게요. 🐾\n\n어떤 증상이 있나요? 자세히 말씀해주시면 더 정확한 분석이 가능해요.`,
+      },
+    ]
+  );
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [lastSeverity, setLastSeverity] = useState<"low" | "medium" | "high" | undefined>();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // 채팅 종료 시 저장
+  useEffect(() => {
+    return () => {
+      if (messages.length > 1) {
+        onSaveChat(messages, lastSeverity);
+      }
+    };
+  }, [messages, lastSeverity, onSaveChat]);
+
+  const handleQuickSymptom = (symptom: string) => {
+    setInput(symptom);
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -62,12 +82,17 @@ export default function ChatInterface({ petProfile }: ChatInterfaceProps) {
       const data = await response.json();
 
       // 에러 응답도 메시지로 표시
+      const severity = response.ok ? data.severity : undefined;
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
         content: data.message,
-        severity: response.ok ? data.severity : undefined,
+        severity,
       };
+
+      if (severity) {
+        setLastSeverity(severity);
+      }
 
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
@@ -125,6 +150,26 @@ export default function ChatInterface({ petProfile }: ChatInterfaceProps) {
 
   return (
     <div className="flex flex-1 flex-col">
+      {/* Chat Header */}
+      <div className="border-b border-gray-100 bg-white px-4 py-3">
+        <div className="mx-auto max-w-3xl flex items-center gap-3">
+          <button
+            onClick={onBack}
+            className="rounded-full p-2 text-gray-500 hover:bg-gray-100 transition-colors"
+          >
+            ←
+          </button>
+          <div className="flex items-center gap-2">
+            <span className="text-lg">{petProfile.species === "dog" ? "🐕" : "🐈"}</span>
+            <span className="font-medium text-gray-800">{petProfile.name}</span>
+          </div>
+          <span className="text-xs text-gray-400">건강 상담 중</span>
+        </div>
+      </div>
+
+      {/* Quick Symptoms */}
+      <QuickSymptoms onSelect={handleQuickSymptom} disabled={isLoading} />
+
       <div className="flex-1 overflow-y-auto px-4 py-4">
         <div className="mx-auto max-w-3xl space-y-4">
           {messages.map((message) => (

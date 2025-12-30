@@ -5,16 +5,20 @@ import { PetProfile } from "@/app/page";
 interface HeaderProps {
   petProfile: PetProfile | null;
   onProfileClick: () => void;
+  onLogoClick?: () => void;
 }
 
-export default function Header({ petProfile, onProfileClick }: HeaderProps) {
+export default function Header({ petProfile, onProfileClick, onLogoClick }: HeaderProps) {
   return (
     <header className="sticky top-0 z-10 border-b border-gray-100 bg-white/80 backdrop-blur-sm">
       <div className="mx-auto flex h-16 max-w-3xl items-center justify-between px-4">
-        <div className="flex items-center gap-2">
+        <button
+          onClick={onLogoClick}
+          className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+        >
           <span className="text-2xl">🐾</span>
           <span className="text-xl font-bold text-gray-800">펫체키</span>
-        </div>
+        </button>
 
         {petProfile && (
           <button
