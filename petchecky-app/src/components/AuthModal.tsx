@@ -11,7 +11,7 @@ interface AuthModalProps {
 type AuthMode = 'login' | 'signup';
 
 export default function AuthModal({ onClose, onSuccess }: AuthModalProps) {
-  const { signIn, signUp, signInWithGoogle } = useAuth();
+  const { signIn, signUp, signInWithGoogle, signInWithKakao } = useAuth();
   const [mode, setMode] = useState<AuthMode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -82,6 +82,15 @@ export default function AuthModal({ onClose, onSuccess }: AuthModalProps) {
     }
   };
 
+  const handleKakaoLogin = async () => {
+    setLoading(true);
+    const { error } = await signInWithKakao();
+    if (error) {
+      setError('카카오 로그인에 실패했습니다.');
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
@@ -98,7 +107,18 @@ export default function AuthModal({ onClose, onSuccess }: AuthModalProps) {
         </div>
 
         {/* 소셜 로그인 */}
-        <div className="mb-6">
+        <div className="mb-6 space-y-3">
+          <button
+            onClick={handleKakaoLogin}
+            disabled={loading}
+            className="flex w-full items-center justify-center gap-3 rounded-lg px-4 py-3 font-medium transition-colors hover:brightness-95 disabled:opacity-50"
+            style={{ backgroundColor: '#FEE500', color: '#000000' }}
+          >
+            <svg className="h-5 w-5" viewBox="0 0 24 24">
+              <path fill="#000000" d="M12 3C6.477 3 2 6.463 2 10.691c0 2.722 1.8 5.108 4.5 6.454-.18.67-.65 2.428-.745 2.805-.116.464.17.457.358.332.148-.098 2.356-1.6 3.307-2.248.525.078 1.067.118 1.58.118 5.523 0 10-3.463 10-7.691S17.523 3 12 3z"/>
+            </svg>
+            카카오로 계속하기
+          </button>
           <button
             onClick={handleGoogleLogin}
             disabled={loading}
