@@ -7,8 +7,20 @@ import Header from "@/components/Header";
 import LandingPage from "@/components/LandingPage";
 import ChatHistory, { ChatRecord } from "@/components/ChatHistory";
 import AuthModal from "@/components/AuthModal";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  getPets,
+  addPet,
+  updatePet,
+  getChatRecords,
+  addChatRecord,
+  deleteChatRecord,
+  Pet,
+  ChatRecord as DBChatRecord,
+} from "@/lib/supabase";
 
 export interface PetProfile {
+  id?: string; // DB id (로그인 시)
   name: string;
   species: "dog" | "cat";
   breed: string;
@@ -28,35 +40,71 @@ type ViewType = "landing" | "chat" | "history";
 const STORAGE_KEY = "petchecky_pet_profile";
 const HISTORY_KEY = "petchecky_chat_history";
 
-// 초기 프로필 로드 함수
-function getInitialProfile(): PetProfile | null {
+// LocalStorage 헬퍼 함수
+function getLocalProfile(): PetProfile | null {
   if (typeof window === "undefined") return null;
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      return JSON.parse(saved);
-    }
+    if (saved) return JSON.parse(saved);
   } catch (e) {
     console.error("Failed to load pet profile:", e);
   }
   return null;
 }
 
-// 채팅 기록 로드 함수
-function getChatHistory(): ChatRecord[] {
+function getLocalHistory(): ChatRecord[] {
   if (typeof window === "undefined") return [];
   try {
     const saved = localStorage.getItem(HISTORY_KEY);
-    if (saved) {
-      return JSON.parse(saved);
-    }
+    if (saved) return JSON.parse(saved);
   } catch (e) {
     console.error("Failed to load chat history:", e);
   }
   return [];
 }
 
+function saveLocalProfile(profile: PetProfile) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+  } catch (e) {
+    console.error("Failed to save pet profile:", e);
+  }
+}
+
+function saveLocalHistory(history: ChatRecord[]) {
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  } catch (e) {
+    console.error("Failed to save chat history:", e);
+  }
+}
+
+// DB -> UI 변환 함수
+function dbPetToProfile(pet: Pet): PetProfile {
+  return {
+    id: pet.id,
+    name: pet.name,
+    species: pet.species,
+    breed: pet.breed,
+    age: pet.age,
+    weight: Number(pet.weight),
+  };
+}
+
+function dbRecordToLocal(record: DBChatRecord): ChatRecord {
+  return {
+    id: record.id,
+    petName: record.pet_name,
+    petSpecies: record.pet_species,
+    date: record.created_at,
+    preview: record.preview,
+    severity: record.severity || undefined,
+    messages: record.messages,
+  };
+}
+
 export default function Home() {
+  const { user, loading: authLoading } = useAuth();
   const [petProfile, setPetProfile] = useState<PetProfile | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -65,69 +113,151 @@ export default function Home() {
   const [chatHistory, setChatHistory] = useState<ChatRecord[]>([]);
   const [selectedRecord, setSelectedRecord] = useState<ChatRecord | null>(null);
 
-  // 클라이언트에서 로컬스토리지 데이터 로드
+  // 데이터 로드 (로그인 상태에 따라 DB 또는 localStorage)
   useEffect(() => {
-    const savedProfile = getInitialProfile();
-    if (savedProfile) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setPetProfile(savedProfile);
-    }
-    const savedHistory = getChatHistory();
-    setChatHistory(savedHistory);
-    setIsLoaded(true);
-  }, []);
+    async function loadData() {
+      if (authLoading) return;
 
-  // 펫 프로필 저장 함수
-  const savePetProfile = (profile: PetProfile) => {
-    setPetProfile(profile);
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
-    } catch (e) {
-      console.error("Failed to save pet profile:", e);
-    }
-  };
+      if (user) {
+        // 로그인: Supabase에서 로드
+        const pets = await getPets(user.id);
+        if (pets.length > 0) {
+          setPetProfile(dbPetToProfile(pets[0]));
+        } else {
+          // DB에 펫 없으면 localStorage 확인 후 마이그레이션
+          const localProfile = getLocalProfile();
+          if (localProfile) {
+            const newPet = await addPet({
+              user_id: user.id,
+              name: localProfile.name,
+              species: localProfile.species,
+              breed: localProfile.breed,
+              age: localProfile.age,
+              weight: localProfile.weight,
+            });
+            if (newPet) {
+              setPetProfile(dbPetToProfile(newPet));
+            }
+          }
+        }
 
-  // 채팅 기록 저장 함수
-  const saveChatHistory = (history: ChatRecord[]) => {
-    setChatHistory(history);
-    try {
-      localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
-    } catch (e) {
-      console.error("Failed to save chat history:", e);
+        const records = await getChatRecords(user.id);
+        setChatHistory(records.map(dbRecordToLocal));
+      } else {
+        // 비로그인: localStorage에서 로드
+        const localProfile = getLocalProfile();
+        if (localProfile) {
+          setPetProfile(localProfile);
+        }
+        setChatHistory(getLocalHistory());
+      }
+
+      setIsLoaded(true);
     }
-  };
+
+    loadData();
+  }, [user, authLoading]);
+
+  // 펫 프로필 저장
+  const savePetProfile = useCallback(async (profile: PetProfile) => {
+    if (user) {
+      // 로그인: DB에 저장
+      if (petProfile?.id) {
+        // 수정
+        const updated = await updatePet(petProfile.id, {
+          name: profile.name,
+          species: profile.species,
+          breed: profile.breed,
+          age: profile.age,
+          weight: profile.weight,
+        });
+        if (updated) {
+          setPetProfile(dbPetToProfile(updated));
+        }
+      } else {
+        // 새로 추가
+        const newPet = await addPet({
+          user_id: user.id,
+          name: profile.name,
+          species: profile.species,
+          breed: profile.breed,
+          age: profile.age,
+          weight: profile.weight,
+        });
+        if (newPet) {
+          setPetProfile(dbPetToProfile(newPet));
+        }
+      }
+    } else {
+      // 비로그인: localStorage에 저장
+      setPetProfile(profile);
+      saveLocalProfile(profile);
+    }
+  }, [user, petProfile?.id]);
 
   // 채팅 저장 핸들러
-  const handleSaveChat = useCallback((messages: Message[], severity?: "low" | "medium" | "high") => {
+  const handleSaveChat = useCallback(async (messages: Message[], severity?: "low" | "medium" | "high") => {
     if (!petProfile || messages.length <= 1) return;
 
-    // 사용자의 첫 번째 메시지를 미리보기로 사용
     const userMessages = messages.filter(m => m.role === "user");
     const preview = userMessages[0]?.content || "상담 내용 없음";
 
-    const newRecord: ChatRecord = {
-      id: Date.now().toString(),
-      petName: petProfile.name,
-      petSpecies: petProfile.species,
-      date: new Date().toISOString(),
-      preview,
-      severity,
-      messages: messages.map(m => ({
-        role: m.role,
-        content: m.content,
-        severity: m.severity,
-      })),
-    };
+    if (user && petProfile.id) {
+      // 로그인: DB에 저장
+      const newRecord = await addChatRecord({
+        user_id: user.id,
+        pet_id: petProfile.id,
+        pet_name: petProfile.name,
+        pet_species: petProfile.species,
+        preview,
+        severity: severity || null,
+        messages: messages.map(m => ({
+          role: m.role,
+          content: m.content,
+          severity: m.severity,
+        })),
+      });
 
-    const updatedHistory = [newRecord, ...chatHistory].slice(0, 50); // 최대 50개 저장
-    saveChatHistory(updatedHistory);
-  }, [petProfile, chatHistory]);
+      if (newRecord) {
+        setChatHistory(prev => [dbRecordToLocal(newRecord), ...prev].slice(0, 50));
+      }
+    } else {
+      // 비로그인: localStorage에 저장
+      const newRecord: ChatRecord = {
+        id: Date.now().toString(),
+        petName: petProfile.name,
+        petSpecies: petProfile.species,
+        date: new Date().toISOString(),
+        preview,
+        severity,
+        messages: messages.map(m => ({
+          role: m.role,
+          content: m.content,
+          severity: m.severity,
+        })),
+      };
+
+      const updatedHistory = [newRecord, ...chatHistory].slice(0, 50);
+      setChatHistory(updatedHistory);
+      saveLocalHistory(updatedHistory);
+    }
+  }, [user, petProfile, chatHistory]);
 
   // 채팅 기록 삭제
-  const handleDeleteRecord = (id: string) => {
-    const updatedHistory = chatHistory.filter(r => r.id !== id);
-    saveChatHistory(updatedHistory);
-  };
+  const handleDeleteRecord = useCallback(async (id: string) => {
+    if (user) {
+      // 로그인: DB에서 삭제
+      const success = await deleteChatRecord(id);
+      if (success) {
+        setChatHistory(prev => prev.filter(r => r.id !== id));
+      }
+    } else {
+      // 비로그인: localStorage에서 삭제
+      const updatedHistory = chatHistory.filter(r => r.id !== id);
+      setChatHistory(updatedHistory);
+      saveLocalHistory(updatedHistory);
+    }
+  }, [user, chatHistory]);
 
   // 채팅 기록 선택
   const handleSelectRecord = (record: ChatRecord) => {
@@ -136,7 +266,7 @@ export default function Home() {
   };
 
   // 로딩 중 화면
-  if (!isLoaded) {
+  if (!isLoaded || authLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-blue-50 to-white">
         <div className="text-center">
