@@ -6,6 +6,7 @@ import PetProfileModal from "@/components/PetProfileModal";
 import Header from "@/components/Header";
 import LandingPage from "@/components/LandingPage";
 import ChatHistory, { ChatRecord } from "@/components/ChatHistory";
+import AuthModal from "@/components/AuthModal";
 
 export interface PetProfile {
   name: string;
@@ -58,6 +59,7 @@ function getChatHistory(): ChatRecord[] {
 export default function Home() {
   const [petProfile, setPetProfile] = useState<PetProfile | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [currentView, setCurrentView] = useState<ViewType>("landing");
   const [chatHistory, setChatHistory] = useState<ChatRecord[]>([]);
@@ -154,6 +156,7 @@ export default function Home() {
           setCurrentView("landing");
           setSelectedRecord(null);
         }}
+        onLoginClick={() => setShowAuthModal(true)}
       />
 
       <main className="flex flex-1 flex-col">
@@ -203,6 +206,13 @@ export default function Home() {
             setShowProfileModal(false);
           }}
           onClose={() => setShowProfileModal(false)}
+        />
+      )}
+
+      {showAuthModal && (
+        <AuthModal
+          onClose={() => setShowAuthModal(false)}
+          onSuccess={() => setShowAuthModal(false)}
         />
       )}
     </div>
