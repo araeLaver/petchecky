@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { PetProfile } from "@/app/page";
 import QuickSymptoms from "./QuickSymptoms";
+import HospitalRecommendation from "./hospital/HospitalRecommendation";
 
 interface Message {
   id: string;
@@ -34,6 +35,7 @@ export default function ChatInterface({ petProfile, onBack, onSaveChat, initialM
   const [isLoading, setIsLoading] = useState(false);
   const [lastSeverity, setLastSeverity] = useState<"low" | "medium" | "high" | undefined>();
   const [limitExceeded, setLimitExceeded] = useState(false);
+  const [showHospitalRecommendation, setShowHospitalRecommendation] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // 채팅 종료 시 저장
@@ -215,6 +217,20 @@ export default function ChatInterface({ petProfile, onBack, onSaveChat, initialM
                 }`}>
                   {message.content}
                 </p>
+                {/* 병원 추천 버튼 - medium/high severity일 때 표시 */}
+                {message.role === "assistant" &&
+                  (message.severity === "medium" || message.severity === "high") && (
+                  <button
+                    onClick={() => setShowHospitalRecommendation(true)}
+                    className={`mt-3 w-full rounded-lg py-2.5 text-sm font-medium text-white transition-colors ${
+                      message.severity === "high"
+                        ? "bg-red-500 hover:bg-red-600"
+                        : "bg-yellow-500 hover:bg-yellow-600"
+                    }`}
+                  >
+                    🏥 가까운 동물병원 찾기
+                  </button>
+                )}
               </div>
             </div>
           ))}
@@ -279,6 +295,15 @@ export default function ChatInterface({ petProfile, onBack, onSaveChat, initialM
           </form>
         )}
       </div>
+
+      {/* 병원 추천 모달 */}
+      {lastSeverity && (
+        <HospitalRecommendation
+          severity={lastSeverity}
+          isVisible={showHospitalRecommendation}
+          onClose={() => setShowHospitalRecommendation(false)}
+        />
+      )}
     </div>
   );
 }
