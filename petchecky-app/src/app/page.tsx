@@ -15,6 +15,7 @@ import {
   getChatRecords,
   addChatRecord,
   deleteChatRecord,
+  getUsage,
   Pet,
   ChatRecord as DBChatRecord,
 } from "@/lib/supabase";
@@ -112,6 +113,7 @@ export default function Home() {
   const [currentView, setCurrentView] = useState<ViewType>("landing");
   const [chatHistory, setChatHistory] = useState<ChatRecord[]>([]);
   const [selectedRecord, setSelectedRecord] = useState<ChatRecord | null>(null);
+  const [usageCount, setUsageCount] = useState<number>(0);
 
   // 데이터 로드 (로그인 상태에 따라 DB 또는 localStorage)
   useEffect(() => {
@@ -143,6 +145,10 @@ export default function Home() {
 
         const records = await getChatRecords(user.id);
         setChatHistory(records.map(dbRecordToLocal));
+
+        // 사용량 조회
+        const usage = await getUsage(user.id);
+        setUsageCount(usage);
       } else {
         // 비로그인: localStorage에서 로드
         const localProfile = getLocalProfile();
@@ -265,6 +271,14 @@ export default function Home() {
     setCurrentView("chat");
   };
 
+  // 사용량 업데이트
+  const refreshUsage = useCallback(async () => {
+    if (user) {
+      const usage = await getUsage(user.id);
+      setUsageCount(usage);
+    }
+  }, [user]);
+
   // 로딩 중 화면
   if (!isLoaded || authLoading) {
     return (
@@ -287,6 +301,7 @@ export default function Home() {
           setSelectedRecord(null);
         }}
         onLoginClick={() => setShowAuthModal(true)}
+        usageCount={usageCount}
       />
 
       <main className="flex flex-1 flex-col">
@@ -315,6 +330,8 @@ export default function Home() {
               id: i.toString(),
               ...m,
             }))}
+            userId={user?.id}
+            onUsageUpdate={refreshUsage}
           />
         )}
 

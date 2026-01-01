@@ -2,16 +2,19 @@
 
 import { PetProfile } from "@/app/page";
 import { useAuth } from "@/contexts/AuthContext";
+import { MONTHLY_FREE_LIMIT } from "@/lib/supabase";
 
 interface HeaderProps {
   petProfile: PetProfile | null;
   onProfileClick: () => void;
   onLogoClick?: () => void;
   onLoginClick?: () => void;
+  usageCount?: number;
 }
 
-export default function Header({ petProfile, onProfileClick, onLogoClick, onLoginClick }: HeaderProps) {
+export default function Header({ petProfile, onProfileClick, onLogoClick, onLoginClick, usageCount }: HeaderProps) {
   const { user, signOut, loading } = useAuth();
+  const remainingCount = MONTHLY_FREE_LIMIT - (usageCount || 0);
 
   return (
     <header className="sticky top-0 z-10 border-b border-gray-100 bg-white/80 backdrop-blur-sm">
@@ -39,9 +42,20 @@ export default function Header({ petProfile, onProfileClick, onLogoClick, onLogi
             <>
               {user ? (
                 <div className="flex items-center gap-2">
-                  <span className="hidden sm:inline text-sm text-gray-600 truncate max-w-[120px]">
-                    {user.email}
-                  </span>
+                  <div className="hidden sm:flex items-center gap-2">
+                    <span
+                      className={`rounded-full px-2 py-1 text-xs font-medium ${
+                        remainingCount <= 3
+                          ? "bg-red-100 text-red-700"
+                          : remainingCount <= 10
+                          ? "bg-yellow-100 text-yellow-700"
+                          : "bg-green-100 text-green-700"
+                      }`}
+                      title="이번 달 남은 무료 상담 횟수"
+                    >
+                      {remainingCount}/{MONTHLY_FREE_LIMIT}회
+                    </span>
+                  </div>
                   <button
                     onClick={() => signOut()}
                     className="rounded-lg bg-gray-200 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-300"

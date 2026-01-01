@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getUsage, incrementUsage, MONTHLY_FREE_LIMIT } from "@/lib/supabase";
 
 interface PetProfile {
   name: string;
@@ -17,6 +18,7 @@ interface ChatRequest {
   message: string;
   petProfile: PetProfile;
   history: Message[];
+  userId?: string; // 로그인 사용자 ID
 }
 
 const SYSTEM_PROMPT = `당신은 반려동물 건강 상담 AI 전문가 "펫체키"입니다.
@@ -70,7 +72,24 @@ function analyzeSeverity(message: string, response: string): "low" | "medium" | 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { message, petProfile, history }: ChatRequest = body;
+    const { message, petProfile, history, userId }: ChatRequest = body;
+
+    // 로그인 사용자 사용량 체크
+    if (userId) {
+      const currentUsage = await getUsage(userId);
+      if (currentUsage >= MONTHLY_FREE_LIMIT) {
+        return NextResponse.json(
+          {
+            message: `이번 달 무료 상담 횟수(${MONTHLY_FREE_LIMIT}회)를 모두 사용했어요. 다음 달 1일에 초기화됩니다.`,
+            severity: "low",
+            limitExceeded: true,
+            usage: currentUsage,
+            limit: MONTHLY_FREE_LIMIT
+          },
+          { status: 429 }
+        );
+      }
+    }
 
     // 입력 유효성 검사
     if (!message || typeof message !== "string" || message.trim().length === 0) {
@@ -185,6 +204,11 @@ ${conversationHistory ? `이전 대화:\n${conversationHistory}\n` : ""}
 
     // 위험도 자동 판단
     const severity = analyzeSeverity(message, cleanMessage);
+
+    // 로그인 사용자 사용량 증가
+    if (userId) {
+      await incrementUsage(userId);
+    }
 
     return NextResponse.json({
       message: cleanMessage || "증상에 대해 더 자세히 설명해주시겠어요?",

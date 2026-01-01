@@ -16,9 +16,11 @@ interface ChatInterfaceProps {
   onBack: () => void;
   onSaveChat: (messages: Message[], severity?: "low" | "medium" | "high") => void;
   initialMessages?: Message[];
+  userId?: string;
+  onUsageUpdate?: () => void;
 }
 
-export default function ChatInterface({ petProfile, onBack, onSaveChat, initialMessages }: ChatInterfaceProps) {
+export default function ChatInterface({ petProfile, onBack, onSaveChat, initialMessages, userId, onUsageUpdate }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>(
     initialMessages || [
       {
@@ -31,6 +33,7 @@ export default function ChatInterface({ petProfile, onBack, onSaveChat, initialM
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [lastSeverity, setLastSeverity] = useState<"low" | "medium" | "high" | undefined>();
+  const [limitExceeded, setLimitExceeded] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // 채팅 종료 시 저장
@@ -76,10 +79,25 @@ export default function ChatInterface({ petProfile, onBack, onSaveChat, initialM
           message: userMessage.content,
           petProfile,
           history: messages.slice(-6),
+          userId,
         }),
       });
 
       const data = await response.json();
+
+      // 사용량 초과 체크
+      if (response.status === 429 && data.limitExceeded) {
+        setLimitExceeded(true);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: (Date.now() + 1).toString(),
+            role: "assistant",
+            content: data.message,
+          },
+        ]);
+        return;
+      }
 
       // 에러 응답도 메시지로 표시
       const severity = response.ok ? data.severity : undefined;
@@ -95,6 +113,11 @@ export default function ChatInterface({ petProfile, onBack, onSaveChat, initialM
       }
 
       setMessages((prev) => [...prev, assistantMessage]);
+
+      // 사용량 업데이트 콜백
+      if (response.ok && onUsageUpdate) {
+        onUsageUpdate();
+      }
     } catch (error) {
       console.error("Error:", error);
       setMessages((prev) => [
@@ -213,29 +236,48 @@ export default function ChatInterface({ petProfile, onBack, onSaveChat, initialM
       </div>
 
       <div className="border-t border-gray-100 bg-white p-4">
-        <form onSubmit={handleSubmit} className="mx-auto max-w-3xl">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value.slice(0, 1000))}
-              placeholder="증상을 입력하세요..."
-              maxLength={1000}
-              className="flex-1 rounded-full border border-gray-300 px-5 py-3 text-gray-800 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              disabled={isLoading}
-            />
-            <button
-              type="submit"
-              disabled={isLoading || !input.trim()}
-              className="rounded-full bg-blue-500 px-6 py-3 font-medium text-white transition-colors hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
-            >
-              전송
-            </button>
+        {limitExceeded ? (
+          <div className="mx-auto max-w-3xl">
+            <div className="rounded-2xl bg-orange-50 border border-orange-200 p-4 text-center">
+              <p className="text-orange-800 font-medium mb-2">
+                이번 달 무료 상담 횟수를 모두 사용했어요
+              </p>
+              <p className="text-sm text-orange-600 mb-3">
+                다음 달 1일에 자동으로 초기화됩니다.
+              </p>
+              <button
+                onClick={onBack}
+                className="rounded-full bg-orange-500 px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-600"
+              >
+                홈으로 돌아가기
+              </button>
+            </div>
           </div>
-          <p className="mt-2 text-center text-xs text-gray-400">
-            * AI 상담은 참고용이며, 정확한 진단은 수의사와 상담하세요
-          </p>
-        </form>
+        ) : (
+          <form onSubmit={handleSubmit} className="mx-auto max-w-3xl">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value.slice(0, 1000))}
+                placeholder="증상을 입력하세요..."
+                maxLength={1000}
+                className="flex-1 rounded-full border border-gray-300 px-5 py-3 text-gray-800 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                disabled={isLoading}
+              />
+              <button
+                type="submit"
+                disabled={isLoading || !input.trim()}
+                className="rounded-full bg-blue-500 px-6 py-3 font-medium text-white transition-colors hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+              >
+                전송
+              </button>
+            </div>
+            <p className="mt-2 text-center text-xs text-gray-400">
+              * AI 상담은 참고용이며, 정확한 진단은 수의사와 상담하세요
+            </p>
+          </form>
+        )}
       </div>
     </div>
   );
