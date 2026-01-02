@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Link from "next/link";
 import { PetProfile } from "@/app/page";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 import QuickSymptoms from "./QuickSymptoms";
 import HospitalRecommendation from "./hospital/HospitalRecommendation";
 
@@ -22,6 +24,7 @@ interface ChatInterfaceProps {
 }
 
 export default function ChatInterface({ petProfile, onBack, onSaveChat, initialMessages, userId, onUsageUpdate }: ChatInterfaceProps) {
+  const { isPremium } = useSubscription();
   const [messages, setMessages] = useState<Message[]>(
     initialMessages || [
       {
@@ -82,6 +85,7 @@ export default function ChatInterface({ petProfile, onBack, onSaveChat, initialM
           petProfile,
           history: messages.slice(-6),
           userId,
+          isPremium,
         }),
       });
 
@@ -254,19 +258,30 @@ export default function ChatInterface({ petProfile, onBack, onSaveChat, initialM
       <div className="border-t border-gray-100 bg-white p-4">
         {limitExceeded ? (
           <div className="mx-auto max-w-3xl">
-            <div className="rounded-2xl bg-orange-50 border border-orange-200 p-4 text-center">
-              <p className="text-orange-800 font-medium mb-2">
+            <div className="rounded-2xl bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 p-5 text-center">
+              <p className="text-gray-800 font-bold text-lg mb-2">
                 이번 달 무료 상담 횟수를 모두 사용했어요
               </p>
-              <p className="text-sm text-orange-600 mb-3">
-                다음 달 1일에 자동으로 초기화됩니다.
+              <p className="text-sm text-gray-600 mb-4">
+                프리미엄 구독으로 무제한 AI 상담을 이용해보세요!
               </p>
-              <button
-                onClick={onBack}
-                className="rounded-full bg-orange-500 px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-600"
-              >
-                홈으로 돌아가기
-              </button>
+              <div className="flex gap-3 justify-center">
+                <Link
+                  href="/subscription"
+                  className="rounded-full bg-gradient-to-r from-blue-500 to-purple-500 px-6 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                >
+                  프리미엄 둘러보기
+                </Link>
+                <button
+                  onClick={onBack}
+                  className="rounded-full bg-gray-200 px-6 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-300"
+                >
+                  홈으로
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-3">
+                다음 달 1일에 무료 횟수가 초기화됩니다
+              </p>
             </div>
           </div>
         ) : (

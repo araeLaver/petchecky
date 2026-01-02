@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { PetProfile } from "@/app/page";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 import { MONTHLY_FREE_LIMIT } from "@/lib/supabase";
 
 interface HeaderProps {
@@ -14,6 +16,7 @@ interface HeaderProps {
 
 export default function Header({ petProfile, onProfileClick, onLogoClick, onLoginClick, usageCount }: HeaderProps) {
   const { user, signOut, loading } = useAuth();
+  const { isPremium, currentPlan, isLoading: subLoading } = useSubscription();
   const remainingCount = MONTHLY_FREE_LIMIT - (usageCount || 0);
 
   return (
@@ -38,24 +41,45 @@ export default function Header({ petProfile, onProfileClick, onLogoClick, onLogi
             </button>
           )}
 
-          {!loading && (
+          {!loading && !subLoading && (
             <>
               {user ? (
                 <div className="flex items-center gap-2">
-                  <div className="hidden sm:flex items-center gap-2">
-                    <span
-                      className={`rounded-full px-2 py-1 text-xs font-medium ${
-                        remainingCount <= 3
-                          ? "bg-red-100 text-red-700"
-                          : remainingCount <= 10
-                          ? "bg-yellow-100 text-yellow-700"
-                          : "bg-green-100 text-green-700"
+                  {isPremium ? (
+                    /* 프리미엄 구독자 배지 */
+                    <Link
+                      href="/subscription"
+                      className={`rounded-full px-3 py-1 text-xs font-bold text-white ${
+                        currentPlan === "premium_plus"
+                          ? "bg-purple-500"
+                          : "bg-blue-500"
                       }`}
-                      title="이번 달 남은 무료 상담 횟수"
                     >
-                      {remainingCount}/{MONTHLY_FREE_LIMIT}회
-                    </span>
-                  </div>
+                      {currentPlan === "premium_plus" ? "프리미엄+" : "프리미엄"}
+                    </Link>
+                  ) : (
+                    /* 무료 사용자: 남은 횟수 + 업그레이드 버튼 */
+                    <div className="hidden sm:flex items-center gap-2">
+                      <span
+                        className={`rounded-full px-2 py-1 text-xs font-medium ${
+                          remainingCount <= 3
+                            ? "bg-red-100 text-red-700"
+                            : remainingCount <= 10
+                            ? "bg-yellow-100 text-yellow-700"
+                            : "bg-green-100 text-green-700"
+                        }`}
+                        title="이번 달 남은 무료 상담 횟수"
+                      >
+                        {remainingCount}/{MONTHLY_FREE_LIMIT}회
+                      </span>
+                      <Link
+                        href="/subscription"
+                        className="rounded-full bg-gradient-to-r from-blue-500 to-purple-500 px-3 py-1 text-xs font-medium text-white hover:opacity-90 transition-opacity"
+                      >
+                        업그레이드
+                      </Link>
+                    </div>
+                  )}
                   <button
                     onClick={() => signOut()}
                     className="rounded-lg bg-gray-200 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-300"

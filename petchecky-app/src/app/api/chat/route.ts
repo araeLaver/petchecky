@@ -19,6 +19,7 @@ interface ChatRequest {
   petProfile: PetProfile;
   history: Message[];
   userId?: string; // 로그인 사용자 ID
+  isPremium?: boolean; // 프리미엄 구독자 여부
 }
 
 const SYSTEM_PROMPT = `당신은 반려동물 건강 상담 AI 전문가 "펫체키"입니다.
@@ -72,19 +73,20 @@ function analyzeSeverity(message: string, response: string): "low" | "medium" | 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { message, petProfile, history, userId }: ChatRequest = body;
+    const { message, petProfile, history, userId, isPremium }: ChatRequest = body;
 
-    // 로그인 사용자 사용량 체크
-    if (userId) {
+    // 로그인 사용자 사용량 체크 (프리미엄 구독자는 무제한)
+    if (userId && !isPremium) {
       const currentUsage = await getUsage(userId);
       if (currentUsage >= MONTHLY_FREE_LIMIT) {
         return NextResponse.json(
           {
-            message: `이번 달 무료 상담 횟수(${MONTHLY_FREE_LIMIT}회)를 모두 사용했어요. 다음 달 1일에 초기화됩니다.`,
+            message: `이번 달 무료 상담 횟수(${MONTHLY_FREE_LIMIT}회)를 모두 사용했어요. 프리미엄 구독으로 업그레이드하시면 무제한으로 이용할 수 있어요!`,
             severity: "low",
             limitExceeded: true,
             usage: currentUsage,
-            limit: MONTHLY_FREE_LIMIT
+            limit: MONTHLY_FREE_LIMIT,
+            showUpgrade: true
           },
           { status: 429 }
         );
@@ -205,8 +207,8 @@ ${conversationHistory ? `이전 대화:\n${conversationHistory}\n` : ""}
     // 위험도 자동 판단
     const severity = analyzeSeverity(message, cleanMessage);
 
-    // 로그인 사용자 사용량 증가
-    if (userId) {
+    // 로그인 사용자 사용량 증가 (프리미엄 구독자는 카운트 제외)
+    if (userId && !isPremium) {
       await incrementUsage(userId);
     }
 
