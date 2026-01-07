@@ -78,6 +78,54 @@ export default function LandingPage({
       description: t.features.community.description,
       link: "/community",
     },
+    {
+      icon: "💉",
+      title: t.features.vaccination.title,
+      description: t.features.vaccination.description,
+      link: "/vaccination",
+    },
+    {
+      icon: "📊",
+      title: t.features.healthTracking.title,
+      description: t.features.healthTracking.description,
+      link: "/health-tracking",
+    },
+    {
+      icon: "🚶",
+      title: t.features.walkTracking.title,
+      description: t.features.walkTracking.description,
+      link: "/walk",
+    },
+    {
+      icon: "📸",
+      title: t.features.gallery.title,
+      description: t.features.gallery.description,
+      link: "/gallery",
+    },
+    {
+      icon: "⭐",
+      title: t.features.hospitalReview.title,
+      description: t.features.hospitalReview.description,
+      link: "/hospital-review",
+    },
+    {
+      icon: "💬",
+      title: t.features.messages.title,
+      description: t.features.messages.description,
+      link: "/messages",
+    },
+    {
+      icon: "🍽️",
+      title: t.features.diet.title,
+      description: t.features.diet.description,
+      link: "/diet",
+    },
+    {
+      icon: "🛡️",
+      title: t.features.insurance.title,
+      description: t.features.insurance.description,
+      link: "/insurance",
+    },
   ];
 
   const SYMPTOMS_LOCALIZED = [
@@ -95,11 +143,11 @@ export default function LandingPage({
       <section className="px-4 py-12 text-center">
         <div className="mx-auto max-w-2xl">
           <div className="mb-6 text-7xl">🐾</div>
-          <h1 className="mb-4 text-4xl font-bold text-gray-800">{t.common.appName}</h1>
-          <p className="mb-2 text-xl text-blue-600 font-medium">
+          <h1 className="mb-4 text-4xl font-bold text-gray-800 dark:text-gray-100">{t.common.appName}</h1>
+          <p className="mb-2 text-xl text-blue-600 font-medium dark:text-blue-400">
             {t.common.tagline}
           </p>
-          <p className="mb-8 text-gray-500 leading-relaxed whitespace-pre-line">
+          <p className="mb-8 text-gray-500 leading-relaxed whitespace-pre-line dark:text-gray-400">
             {t.landing.heroDescription}
           </p>
 
@@ -139,10 +187,10 @@ export default function LandingPage({
           </div>
 
           {petProfile && (
-            <div className="mt-6 inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-2 text-sm text-blue-700">
+            <div className="mt-6 inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-2 text-sm text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
               <span>{petProfile.species === "dog" ? "🐕" : "🐈"}</span>
               <span className="font-medium">{petProfile.name}</span>
-              <span className="text-blue-400">|</span>
+              <span className="text-blue-400 dark:text-blue-500">|</span>
               <span>{petProfile.breed} · {petProfile.age}{t.pet.years} · {petProfile.weight}{t.pet.kg}</span>
             </div>
           )}
@@ -150,9 +198,9 @@ export default function LandingPage({
       </section>
 
       {/* Common Symptoms Section */}
-      <section className="border-t border-gray-100 bg-gray-50 px-4 py-10">
+      <section className="border-t border-gray-100 bg-gray-50 px-4 py-10 dark:border-gray-800 dark:bg-gray-900">
         <div className="mx-auto max-w-2xl">
-          <h2 className="mb-6 text-center text-lg font-semibold text-gray-700">
+          <h2 className="mb-6 text-center text-lg font-semibold text-gray-700 dark:text-gray-300">
             {t.landing.symptomsQuestion}
           </h2>
           <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
@@ -166,10 +214,10 @@ export default function LandingPage({
                     onStartChat();
                   }
                 }}
-                className="flex flex-col items-center gap-2 rounded-xl bg-white p-4 shadow-sm transition-all hover:shadow-md hover:scale-105 active:scale-95"
+                className="flex flex-col items-center gap-2 rounded-xl bg-white p-4 shadow-sm transition-all hover:shadow-md hover:scale-105 active:scale-95 dark:bg-gray-800 dark:shadow-gray-900"
               >
                 <span className="text-2xl">{symptom.emoji}</span>
-                <span className="text-sm font-medium text-gray-700">{symptom.label}</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{symptom.label}</span>
               </button>
             ))}
           </div>
@@ -179,7 +227,7 @@ export default function LandingPage({
       {/* Features Section */}
       <section className="px-4 py-12">
         <div className="mx-auto max-w-3xl">
-          <h2 className="mb-8 text-center text-xl font-bold text-gray-800">
+          <h2 className="mb-8 text-center text-xl font-bold text-gray-800 dark:text-gray-100">
             {t.landing.featuresTitle}
           </h2>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -187,10 +235,10 @@ export default function LandingPage({
               const content = (
                 <>
                   <div className="mb-3 text-3xl">{feature.icon}</div>
-                  <h3 className="mb-2 font-semibold text-gray-800">{feature.title}</h3>
-                  <p className="text-sm text-gray-500 leading-relaxed">{feature.description}</p>
+                  <h3 className="mb-2 font-semibold text-gray-800 dark:text-gray-100">{feature.title}</h3>
+                  <p className="text-sm text-gray-500 leading-relaxed dark:text-gray-400">{feature.description}</p>
                   {"link" in feature && (
-                    <p className="mt-2 text-sm text-blue-500 font-medium">바로가기 →</p>
+                    <p className="mt-2 text-sm text-blue-500 font-medium dark:text-blue-400">바로가기 →</p>
                   )}
                 </>
               );
@@ -200,7 +248,7 @@ export default function LandingPage({
                   <Link
                     key={feature.title}
                     href={feature.link}
-                    className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm hover:border-blue-200 hover:shadow-md transition-all"
+                    className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm hover:border-blue-200 hover:shadow-md transition-all dark:border-gray-700 dark:bg-gray-800 dark:hover:border-blue-500"
                   >
                     {content}
                   </Link>
@@ -210,7 +258,7 @@ export default function LandingPage({
               return (
                 <div
                   key={feature.title}
-                  className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm"
+                  className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800"
                 >
                   {content}
                 </div>
@@ -221,7 +269,7 @@ export default function LandingPage({
       </section>
 
       {/* Vet Consultation Banner */}
-      <section className="border-t border-gray-100 bg-gradient-to-r from-blue-500 to-purple-500 px-4 py-8">
+      <section className="border-t border-gray-100 bg-gradient-to-r from-blue-500 to-purple-500 px-4 py-8 dark:border-gray-800">
         <div className="mx-auto max-w-2xl text-center">
           <div className="text-4xl mb-3">👨‍⚕️</div>
           <h2 className="text-xl font-bold text-white mb-2">
@@ -240,9 +288,9 @@ export default function LandingPage({
       </section>
 
       {/* Disclaimer Section */}
-      <section className="border-t border-gray-100 bg-amber-50 px-4 py-6">
+      <section className="border-t border-gray-100 bg-amber-50 px-4 py-6 dark:border-gray-800 dark:bg-amber-900/20">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-sm text-amber-700">
+          <p className="text-sm text-amber-700 dark:text-amber-400">
             {t.disclaimer.main}
             <br />
             {t.disclaimer.emergency}
@@ -251,8 +299,8 @@ export default function LandingPage({
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-gray-100 px-4 py-6">
-        <div className="mx-auto max-w-2xl text-center text-xs text-gray-400">
+      <footer className="border-t border-gray-100 px-4 py-6 dark:border-gray-800">
+        <div className="mx-auto max-w-2xl text-center text-xs text-gray-400 dark:text-gray-500">
           <p>{t.footer.copyright}</p>
         </div>
       </footer>

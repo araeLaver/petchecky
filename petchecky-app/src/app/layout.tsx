@@ -6,6 +6,9 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import { PushNotificationProvider } from "@/contexts/PushNotificationContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
+import OfflineIndicator from "@/components/OfflineIndicator";
+import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 
 const notoSansKr = Noto_Sans_KR({
   variable: "--font-noto-sans-kr",
@@ -70,15 +73,19 @@ export default function RootLayout({
         />
       </head>
       <body className={`${notoSansKr.variable} font-sans antialiased`}>
-        <LanguageProvider>
-          <AuthProvider>
-            <SubscriptionProvider>
-              <PushNotificationProvider>
-                {children}
-              </PushNotificationProvider>
-            </SubscriptionProvider>
-          </AuthProvider>
-        </LanguageProvider>
+        <ThemeProvider>
+          <LanguageProvider>
+            <AuthProvider>
+              <SubscriptionProvider>
+                <PushNotificationProvider>
+                  <ServiceWorkerRegistration />
+                  <OfflineIndicator />
+                  {children}
+                </PushNotificationProvider>
+              </SubscriptionProvider>
+            </AuthProvider>
+          </LanguageProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
