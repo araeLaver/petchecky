@@ -4,6 +4,8 @@ import Script from "next/script";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
+import { PushNotificationProvider } from "@/contexts/PushNotificationContext";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 
 const notoSansKr = Noto_Sans_KR({
   variable: "--font-noto-sans-kr",
@@ -68,11 +70,15 @@ export default function RootLayout({
         />
       </head>
       <body className={`${notoSansKr.variable} font-sans antialiased`}>
-        <AuthProvider>
-          <SubscriptionProvider>
-            {children}
-          </SubscriptionProvider>
-        </AuthProvider>
+        <LanguageProvider>
+          <AuthProvider>
+            <SubscriptionProvider>
+              <PushNotificationProvider>
+                {children}
+              </PushNotificationProvider>
+            </SubscriptionProvider>
+          </AuthProvider>
+        </LanguageProvider>
       </body>
     </html>
   );

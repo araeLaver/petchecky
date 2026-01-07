@@ -7,6 +7,7 @@ interface HospitalListProps {
   isLoading: boolean;
   selectedHospital: Hospital | null;
   onSelect: (hospital: Hospital) => void;
+  onReservation?: (hospital: Hospital) => void;
 }
 
 function formatDistance(meters: string): string {
@@ -23,6 +24,7 @@ export default function HospitalList({
   isLoading,
   selectedHospital,
   onSelect,
+  onReservation,
 }: HospitalListProps) {
   if (isLoading) {
     return (
@@ -84,24 +86,35 @@ export default function HospitalList({
           </div>
 
           {/* 액션 버튼 */}
-          <div className="flex gap-2 mt-3 pl-8">
+          <div className="flex flex-wrap gap-2 mt-3 pl-8">
             {hospital.phone && (
               <a
                 href={`tel:${hospital.phone}`}
                 onClick={(e) => e.stopPropagation()}
-                className="flex-1 rounded-lg bg-blue-500 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-600 transition-colors"
+                className="flex-1 min-w-[80px] rounded-lg bg-blue-500 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-600 transition-colors"
               >
-                📞 전화하기
+                📞 전화
               </a>
+            )}
+            {onReservation && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onReservation(hospital);
+                }}
+                className="flex-1 min-w-[80px] rounded-lg bg-green-500 py-2.5 text-center text-sm font-medium text-white hover:bg-green-600 transition-colors"
+              >
+                📅 예약
+              </button>
             )}
             <a
               href={hospital.placeUrl}
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="flex-1 rounded-lg border border-gray-300 py-2.5 text-center text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              className="flex-1 min-w-[80px] rounded-lg border border-gray-300 py-2.5 text-center text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
             >
-              🗺️ 상세정보
+              🗺️ 상세
             </a>
           </div>
         </button>

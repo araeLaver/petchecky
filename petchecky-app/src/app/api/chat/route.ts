@@ -20,6 +20,11 @@ interface ChatRequest {
   history: Message[];
   userId?: string; // 로그인 사용자 ID
   isPremium?: boolean; // 프리미엄 구독자 여부
+  isPremiumPlus?: boolean; // 프리미엄+ 구독자 여부
+  image?: {
+    data: string; // Base64 encoded image
+    mimeType: string; // image/jpeg, image/png, etc.
+  };
 }
 
 const SYSTEM_PROMPT = `당신은 반려동물 건강 상담 AI 전문가 "펫체키"입니다.
@@ -73,7 +78,19 @@ function analyzeSeverity(message: string, response: string): "low" | "medium" | 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { message, petProfile, history, userId, isPremium }: ChatRequest = body;
+    const { message, petProfile, history, userId, isPremium, isPremiumPlus, image }: ChatRequest = body;
+
+    // 이미지 분석은 프리미엄+ 전용
+    if (image && !isPremiumPlus) {
+      return NextResponse.json(
+        {
+          message: "이미지 분석은 프리미엄+ 구독자 전용 기능입니다. 업그레이드하시면 반려동물 사진으로 증상을 분석받을 수 있어요!",
+          severity: "low",
+          requirePremiumPlus: true,
+        },
+        { status: 403 }
+      );
+    }
 
     // 로그인 사용자 사용량 체크 (프리미엄 구독자는 무제한)
     if (userId && !isPremium) {
@@ -136,7 +153,12 @@ export async function POST(request: NextRequest) {
       .map((msg) => `${msg.role === "user" ? "보호자" : "펫체키"}: ${msg.content}`)
       .join("\n");
 
-    const fullPrompt = `${SYSTEM_PROMPT}
+    // 이미지가 있는 경우 추가 안내
+    const imagePrompt = image
+      ? `\n\n[이미지 분석 요청]\n보호자가 반려동물의 사진을 첨부했습니다. 이미지에서 보이는 증상이나 상태를 분석하고, 보호자의 질문과 함께 종합적인 건강 상담을 제공해주세요.`
+      : "";
+
+    const fullPrompt = `${SYSTEM_PROMPT}${imagePrompt}
 
 ${petContext}
 
@@ -144,6 +166,22 @@ ${conversationHistory ? `이전 대화:\n${conversationHistory}\n` : ""}
 보호자: ${message}
 
 펫체키:`;
+
+    // API 요청 본문 구성
+    const parts: Array<{ text: string } | { inline_data: { mime_type: string; data: string } }> = [];
+
+    // 이미지가 있으면 먼저 추가
+    if (image) {
+      parts.push({
+        inline_data: {
+          mime_type: image.mimeType,
+          data: image.data,
+        },
+      });
+    }
+
+    // 텍스트 프롬프트 추가
+    parts.push({ text: fullPrompt });
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
@@ -155,7 +193,7 @@ ${conversationHistory ? `이전 대화:\n${conversationHistory}\n` : ""}
         body: JSON.stringify({
           contents: [
             {
-              parts: [{ text: fullPrompt }],
+              parts,
             },
           ],
           generationConfig: {

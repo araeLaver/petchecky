@@ -1,12 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import { PetProfile } from "@/app/page";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface LandingPageProps {
   petProfile: PetProfile | null;
   onStartChat: () => void;
   onRegisterPet: () => void;
   onViewHistory: () => void;
+  onViewReport: () => void;
   historyCount: number;
 }
 
@@ -27,9 +30,10 @@ const FEATURES = [
     description: "이전 상담 내역을 저장하고, 언제든 다시 확인할 수 있어요.",
   },
   {
-    icon: "🐕",
-    title: "맞춤형 상담",
-    description: "반려동물의 종류, 품종, 나이, 체중을 고려한 맞춤 상담을 제공해요.",
+    icon: "💬",
+    title: "커뮤니티",
+    description: "다른 반려인들과 정보를 공유하고 소통할 수 있어요.",
+    link: "/community",
   },
 ];
 
@@ -47,22 +51,56 @@ export default function LandingPage({
   onStartChat,
   onRegisterPet,
   onViewHistory,
+  onViewReport,
   historyCount,
 }: LandingPageProps) {
+  const { t } = useLanguage();
+
+  const FEATURES_LOCALIZED = [
+    {
+      icon: "🔍",
+      title: t.features.aiAnalysis.title,
+      description: t.features.aiAnalysis.description,
+    },
+    {
+      icon: "⚡",
+      title: t.features.riskAssessment.title,
+      description: t.features.riskAssessment.description,
+    },
+    {
+      icon: "📋",
+      title: t.features.chatHistory.title,
+      description: t.features.chatHistory.description,
+    },
+    {
+      icon: "💬",
+      title: t.features.community.title,
+      description: t.features.community.description,
+      link: "/community",
+    },
+  ];
+
+  const SYMPTOMS_LOCALIZED = [
+    { emoji: "🤮", label: t.symptoms.vomiting },
+    { emoji: "💩", label: t.symptoms.diarrhea },
+    { emoji: "😫", label: t.symptoms.lossOfAppetite },
+    { emoji: "🤒", label: t.symptoms.fever },
+    { emoji: "🦵", label: t.symptoms.limping },
+    { emoji: "😴", label: t.symptoms.lethargy },
+  ];
+
   return (
     <div className="flex-1 overflow-y-auto">
       {/* Hero Section */}
       <section className="px-4 py-12 text-center">
         <div className="mx-auto max-w-2xl">
           <div className="mb-6 text-7xl">🐾</div>
-          <h1 className="mb-4 text-4xl font-bold text-gray-800">펫체키</h1>
+          <h1 className="mb-4 text-4xl font-bold text-gray-800">{t.common.appName}</h1>
           <p className="mb-2 text-xl text-blue-600 font-medium">
-            AI가 체크하는 우리 아이 건강
+            {t.common.tagline}
           </p>
-          <p className="mb-8 text-gray-500 leading-relaxed">
-            반려동물이 아파 보일 때, 걱정되는 증상이 있을 때
-            <br />
-            AI가 증상을 분석하고 적절한 대응 방법을 알려드립니다.
+          <p className="mb-8 text-gray-500 leading-relaxed whitespace-pre-line">
+            {t.landing.heroDescription}
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -71,24 +109,32 @@ export default function LandingPage({
                 onClick={onStartChat}
                 className="rounded-full bg-blue-500 px-8 py-4 text-lg font-semibold text-white shadow-lg transition-all hover:bg-blue-600 hover:shadow-xl active:scale-95"
               >
-                💬 상담 시작하기
+                {t.landing.startChat}
               </button>
             ) : (
               <button
                 onClick={onRegisterPet}
                 className="rounded-full bg-blue-500 px-8 py-4 text-lg font-semibold text-white shadow-lg transition-all hover:bg-blue-600 hover:shadow-xl active:scale-95"
               >
-                🐾 우리 아이 등록하기
+                {t.landing.registerPet}
               </button>
             )}
 
             {historyCount > 0 && (
-              <button
-                onClick={onViewHistory}
-                className="rounded-full border-2 border-gray-300 bg-white px-8 py-4 text-lg font-semibold text-gray-700 transition-all hover:border-gray-400 hover:bg-gray-50 active:scale-95"
-              >
-                📋 상담 기록 ({historyCount})
-              </button>
+              <>
+                <button
+                  onClick={onViewHistory}
+                  className="rounded-full border-2 border-gray-300 bg-white px-8 py-4 text-lg font-semibold text-gray-700 transition-all hover:border-gray-400 hover:bg-gray-50 active:scale-95"
+                >
+                  {t.landing.chatHistory} ({historyCount})
+                </button>
+                <button
+                  onClick={onViewReport}
+                  className="rounded-full border-2 border-blue-300 bg-blue-50 px-8 py-4 text-lg font-semibold text-blue-700 transition-all hover:border-blue-400 hover:bg-blue-100 active:scale-95"
+                >
+                  {t.landing.healthReport}
+                </button>
+              </>
             )}
           </div>
 
@@ -97,7 +143,7 @@ export default function LandingPage({
               <span>{petProfile.species === "dog" ? "🐕" : "🐈"}</span>
               <span className="font-medium">{petProfile.name}</span>
               <span className="text-blue-400">|</span>
-              <span>{petProfile.breed} · {petProfile.age}세 · {petProfile.weight}kg</span>
+              <span>{petProfile.breed} · {petProfile.age}{t.pet.years} · {petProfile.weight}{t.pet.kg}</span>
             </div>
           )}
         </div>
@@ -107,10 +153,10 @@ export default function LandingPage({
       <section className="border-t border-gray-100 bg-gray-50 px-4 py-10">
         <div className="mx-auto max-w-2xl">
           <h2 className="mb-6 text-center text-lg font-semibold text-gray-700">
-            이런 증상이 있으신가요?
+            {t.landing.symptomsQuestion}
           </h2>
           <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
-            {COMMON_SYMPTOMS.map((symptom) => (
+            {SYMPTOMS_LOCALIZED.map((symptom) => (
               <button
                 key={symptom.label}
                 onClick={() => {
@@ -134,20 +180,62 @@ export default function LandingPage({
       <section className="px-4 py-12">
         <div className="mx-auto max-w-3xl">
           <h2 className="mb-8 text-center text-xl font-bold text-gray-800">
-            펫체키가 도와드려요
+            {t.landing.featuresTitle}
           </h2>
           <div className="grid gap-4 sm:grid-cols-2">
-            {FEATURES.map((feature) => (
-              <div
-                key={feature.title}
-                className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm"
-              >
-                <div className="mb-3 text-3xl">{feature.icon}</div>
-                <h3 className="mb-2 font-semibold text-gray-800">{feature.title}</h3>
-                <p className="text-sm text-gray-500 leading-relaxed">{feature.description}</p>
-              </div>
-            ))}
+            {FEATURES_LOCALIZED.map((feature) => {
+              const content = (
+                <>
+                  <div className="mb-3 text-3xl">{feature.icon}</div>
+                  <h3 className="mb-2 font-semibold text-gray-800">{feature.title}</h3>
+                  <p className="text-sm text-gray-500 leading-relaxed">{feature.description}</p>
+                  {"link" in feature && (
+                    <p className="mt-2 text-sm text-blue-500 font-medium">바로가기 →</p>
+                  )}
+                </>
+              );
+
+              if ("link" in feature && feature.link) {
+                return (
+                  <Link
+                    key={feature.title}
+                    href={feature.link}
+                    className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm hover:border-blue-200 hover:shadow-md transition-all"
+                  >
+                    {content}
+                  </Link>
+                );
+              }
+
+              return (
+                <div
+                  key={feature.title}
+                  className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm"
+                >
+                  {content}
+                </div>
+              );
+            })}
           </div>
+        </div>
+      </section>
+
+      {/* Vet Consultation Banner */}
+      <section className="border-t border-gray-100 bg-gradient-to-r from-blue-500 to-purple-500 px-4 py-8">
+        <div className="mx-auto max-w-2xl text-center">
+          <div className="text-4xl mb-3">👨‍⚕️</div>
+          <h2 className="text-xl font-bold text-white mb-2">
+            {t.vetConsultation.title}
+          </h2>
+          <p className="text-blue-100 mb-4">
+            {t.vetConsultation.subtitle}
+          </p>
+          <Link
+            href="/vet-consultation"
+            className="inline-block rounded-full bg-white px-6 py-3 font-semibold text-blue-600 transition-all hover:bg-blue-50 hover:scale-105 active:scale-95"
+          >
+            {t.vetConsultation.startConsult}
+          </Link>
         </div>
       </section>
 
@@ -155,9 +243,9 @@ export default function LandingPage({
       <section className="border-t border-gray-100 bg-amber-50 px-4 py-6">
         <div className="mx-auto max-w-2xl text-center">
           <p className="text-sm text-amber-700">
-            ⚠️ 펫체키는 참고용 정보를 제공하며, 정확한 진단은 수의사와 상담하세요.
+            {t.disclaimer.main}
             <br />
-            응급 상황 시 가까운 동물병원을 방문해주세요.
+            {t.disclaimer.emergency}
           </p>
         </div>
       </section>
@@ -165,7 +253,7 @@ export default function LandingPage({
       {/* Footer */}
       <footer className="border-t border-gray-100 px-4 py-6">
         <div className="mx-auto max-w-2xl text-center text-xs text-gray-400">
-          <p>© 2024 펫체키. AI 반려동물 건강 상담 서비스.</p>
+          <p>{t.footer.copyright}</p>
         </div>
       </footer>
     </div>

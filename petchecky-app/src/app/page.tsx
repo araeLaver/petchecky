@@ -7,11 +7,14 @@ import Header from "@/components/Header";
 import LandingPage from "@/components/LandingPage";
 import ChatHistory, { ChatRecord } from "@/components/ChatHistory";
 import AuthModal from "@/components/AuthModal";
+import HealthReport from "@/components/HealthReport";
+import NotificationSettings from "@/components/NotificationSettings";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   getPets,
   addPet,
   updatePet,
+  deletePet,
   getChatRecords,
   addChatRecord,
   deleteChatRecord,
@@ -38,19 +41,36 @@ interface Message {
 
 type ViewType = "landing" | "chat" | "history";
 
-const STORAGE_KEY = "petchecky_pet_profile";
+const STORAGE_KEY = "petchecky_pets"; // 다중 펫 지원으로 변경
+const SELECTED_PET_KEY = "petchecky_selected_pet";
 const HISTORY_KEY = "petchecky_chat_history";
 
-// LocalStorage 헬퍼 함수
-function getLocalProfile(): PetProfile | null {
-  if (typeof window === "undefined") return null;
+// LocalStorage 헬퍼 함수 (다중 펫 지원)
+function getLocalPets(): PetProfile[] {
+  if (typeof window === "undefined") return [];
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // 기존 단일 펫 데이터 마이그레이션
+      if (!Array.isArray(parsed)) {
+        return [{ ...parsed, id: `local_${Date.now()}` }];
+      }
+      return parsed;
+    }
   } catch (e) {
-    console.error("Failed to load pet profile:", e);
+    console.error("Failed to load pets:", e);
   }
-  return null;
+  return [];
+}
+
+function getSelectedPetId(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return localStorage.getItem(SELECTED_PET_KEY);
+  } catch (e) {
+    return null;
+  }
 }
 
 function getLocalHistory(): ChatRecord[] {
@@ -64,11 +84,23 @@ function getLocalHistory(): ChatRecord[] {
   return [];
 }
 
-function saveLocalProfile(profile: PetProfile) {
+function saveLocalPets(pets: PetProfile[]) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(pets));
   } catch (e) {
-    console.error("Failed to save pet profile:", e);
+    console.error("Failed to save pets:", e);
+  }
+}
+
+function saveSelectedPetId(id: string | null) {
+  try {
+    if (id) {
+      localStorage.setItem(SELECTED_PET_KEY, id);
+    } else {
+      localStorage.removeItem(SELECTED_PET_KEY);
+    }
+  } catch (e) {
+    console.error("Failed to save selected pet:", e);
   }
 }
 
@@ -106,14 +138,21 @@ function dbRecordToLocal(record: DBChatRecord): ChatRecord {
 
 export default function Home() {
   const { user, loading: authLoading } = useAuth();
-  const [petProfile, setPetProfile] = useState<PetProfile | null>(null);
+  const [pets, setPets] = useState<PetProfile[]>([]);
+  const [selectedPetId, setSelectedPetId] = useState<string | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [editingPet, setEditingPet] = useState<PetProfile | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [currentView, setCurrentView] = useState<ViewType>("landing");
   const [chatHistory, setChatHistory] = useState<ChatRecord[]>([]);
   const [selectedRecord, setSelectedRecord] = useState<ChatRecord | null>(null);
   const [usageCount, setUsageCount] = useState<number>(0);
+  const [showHealthReport, setShowHealthReport] = useState(false);
+  const [showNotificationSettings, setShowNotificationSettings] = useState(false);
+
+  // 현재 선택된 펫 (computed)
+  const selectedPet = pets.find(p => p.id === selectedPetId) || pets[0] || null;
 
   // 데이터 로드 (로그인 상태에 따라 DB 또는 localStorage)
   useEffect(() => {
@@ -122,23 +161,39 @@ export default function Home() {
 
       if (user) {
         // 로그인: Supabase에서 로드
-        const pets = await getPets(user.id);
-        if (pets.length > 0) {
-          setPetProfile(dbPetToProfile(pets[0]));
+        const dbPets = await getPets(user.id);
+        if (dbPets.length > 0) {
+          const loadedPets = dbPets.map(dbPetToProfile);
+          setPets(loadedPets);
+
+          // 저장된 선택 펫 ID 복원
+          const savedSelectedId = getSelectedPetId();
+          if (savedSelectedId && loadedPets.some(p => p.id === savedSelectedId)) {
+            setSelectedPetId(savedSelectedId);
+          } else {
+            setSelectedPetId(loadedPets[0].id || null);
+          }
         } else {
           // DB에 펫 없으면 localStorage 확인 후 마이그레이션
-          const localProfile = getLocalProfile();
-          if (localProfile) {
-            const newPet = await addPet({
-              user_id: user.id,
-              name: localProfile.name,
-              species: localProfile.species,
-              breed: localProfile.breed,
-              age: localProfile.age,
-              weight: localProfile.weight,
-            });
-            if (newPet) {
-              setPetProfile(dbPetToProfile(newPet));
+          const localPets = getLocalPets();
+          if (localPets.length > 0) {
+            const migratedPets: PetProfile[] = [];
+            for (const localPet of localPets) {
+              const newPet = await addPet({
+                user_id: user.id,
+                name: localPet.name,
+                species: localPet.species,
+                breed: localPet.breed,
+                age: localPet.age,
+                weight: localPet.weight,
+              });
+              if (newPet) {
+                migratedPets.push(dbPetToProfile(newPet));
+              }
+            }
+            setPets(migratedPets);
+            if (migratedPets.length > 0) {
+              setSelectedPetId(migratedPets[0].id || null);
             }
           }
         }
@@ -151,10 +206,16 @@ export default function Home() {
         setUsageCount(usage);
       } else {
         // 비로그인: localStorage에서 로드
-        const localProfile = getLocalProfile();
-        if (localProfile) {
-          setPetProfile(localProfile);
+        const localPets = getLocalPets();
+        setPets(localPets);
+
+        const savedSelectedId = getSelectedPetId();
+        if (savedSelectedId && localPets.some(p => p.id === savedSelectedId)) {
+          setSelectedPetId(savedSelectedId);
+        } else if (localPets.length > 0) {
+          setSelectedPetId(localPets[0].id || null);
         }
+
         setChatHistory(getLocalHistory());
       }
 
@@ -164,13 +225,19 @@ export default function Home() {
     loadData();
   }, [user, authLoading]);
 
-  // 펫 프로필 저장
+  // 펫 선택 변경 시 저장
+  const handleSelectPet = useCallback((petId: string) => {
+    setSelectedPetId(petId);
+    saveSelectedPetId(petId);
+  }, []);
+
+  // 펫 프로필 저장 (추가/수정)
   const savePetProfile = useCallback(async (profile: PetProfile) => {
     if (user) {
       // 로그인: DB에 저장
-      if (petProfile?.id) {
+      if (editingPet?.id) {
         // 수정
-        const updated = await updatePet(petProfile.id, {
+        const updated = await updatePet(editingPet.id, {
           name: profile.name,
           species: profile.species,
           breed: profile.breed,
@@ -178,7 +245,8 @@ export default function Home() {
           weight: profile.weight,
         });
         if (updated) {
-          setPetProfile(dbPetToProfile(updated));
+          const updatedProfile = dbPetToProfile(updated);
+          setPets(prev => prev.map(p => p.id === editingPet.id ? updatedProfile : p));
         }
       } else {
         // 새로 추가
@@ -191,30 +259,83 @@ export default function Home() {
           weight: profile.weight,
         });
         if (newPet) {
-          setPetProfile(dbPetToProfile(newPet));
+          const newProfile = dbPetToProfile(newPet);
+          setPets(prev => [...prev, newProfile]);
+          setSelectedPetId(newProfile.id || null);
+          saveSelectedPetId(newProfile.id || null);
         }
       }
     } else {
       // 비로그인: localStorage에 저장
-      setPetProfile(profile);
-      saveLocalProfile(profile);
+      if (editingPet?.id) {
+        // 수정
+        const updatedPets = pets.map(p =>
+          p.id === editingPet.id ? { ...profile, id: editingPet.id } : p
+        );
+        setPets(updatedPets);
+        saveLocalPets(updatedPets);
+      } else {
+        // 새로 추가
+        const newId = `local_${Date.now()}`;
+        const newProfile = { ...profile, id: newId };
+        const updatedPets = [...pets, newProfile];
+        setPets(updatedPets);
+        saveLocalPets(updatedPets);
+        setSelectedPetId(newId);
+        saveSelectedPetId(newId);
+      }
     }
-  }, [user, petProfile?.id]);
+    setEditingPet(null);
+  }, [user, editingPet, pets]);
+
+  // 펫 삭제
+  const handleDeletePet = useCallback(async (petId: string) => {
+    if (user) {
+      // 로그인: DB에서 삭제
+      const success = await deletePet(petId);
+      if (success) {
+        setPets(prev => {
+          const filtered = prev.filter(p => p.id !== petId);
+          // 삭제된 펫이 선택된 펫이었다면 첫 번째 펫 선택
+          if (selectedPetId === petId && filtered.length > 0) {
+            setSelectedPetId(filtered[0].id || null);
+            saveSelectedPetId(filtered[0].id || null);
+          } else if (filtered.length === 0) {
+            setSelectedPetId(null);
+            saveSelectedPetId(null);
+          }
+          return filtered;
+        });
+      }
+    } else {
+      // 비로그인: localStorage에서 삭제
+      const filtered = pets.filter(p => p.id !== petId);
+      setPets(filtered);
+      saveLocalPets(filtered);
+      if (selectedPetId === petId && filtered.length > 0) {
+        setSelectedPetId(filtered[0].id || null);
+        saveSelectedPetId(filtered[0].id || null);
+      } else if (filtered.length === 0) {
+        setSelectedPetId(null);
+        saveSelectedPetId(null);
+      }
+    }
+  }, [user, pets, selectedPetId]);
 
   // 채팅 저장 핸들러
   const handleSaveChat = useCallback(async (messages: Message[], severity?: "low" | "medium" | "high") => {
-    if (!petProfile || messages.length <= 1) return;
+    if (!selectedPet || messages.length <= 1) return;
 
     const userMessages = messages.filter(m => m.role === "user");
     const preview = userMessages[0]?.content || "상담 내용 없음";
 
-    if (user && petProfile.id) {
+    if (user && selectedPet.id) {
       // 로그인: DB에 저장
       const newRecord = await addChatRecord({
         user_id: user.id,
-        pet_id: petProfile.id,
-        pet_name: petProfile.name,
-        pet_species: petProfile.species,
+        pet_id: selectedPet.id,
+        pet_name: selectedPet.name,
+        pet_species: selectedPet.species,
         preview,
         severity: severity || null,
         messages: messages.map(m => ({
@@ -231,8 +352,8 @@ export default function Home() {
       // 비로그인: localStorage에 저장
       const newRecord: ChatRecord = {
         id: Date.now().toString(),
-        petName: petProfile.name,
-        petSpecies: petProfile.species,
+        petName: selectedPet.name,
+        petSpecies: selectedPet.species,
         date: new Date().toISOString(),
         preview,
         severity,
@@ -247,7 +368,7 @@ export default function Home() {
       setChatHistory(updatedHistory);
       saveLocalHistory(updatedHistory);
     }
-  }, [user, petProfile, chatHistory]);
+  }, [user, selectedPet, chatHistory]);
 
   // 채팅 기록 삭제
   const handleDeleteRecord = useCallback(async (id: string) => {
@@ -294,33 +415,47 @@ export default function Home() {
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-blue-50 to-white">
       <Header
-        petProfile={petProfile}
-        onProfileClick={() => setShowProfileModal(true)}
+        pets={pets}
+        selectedPet={selectedPet}
+        onSelectPet={handleSelectPet}
+        onEditPet={(pet) => {
+          setEditingPet(pet);
+          setShowProfileModal(true);
+        }}
+        onAddPet={() => {
+          setEditingPet(null);
+          setShowProfileModal(true);
+        }}
         onLogoClick={() => {
           setCurrentView("landing");
           setSelectedRecord(null);
         }}
         onLoginClick={() => setShowAuthModal(true)}
+        onNotificationClick={() => setShowNotificationSettings(true)}
         usageCount={usageCount}
       />
 
       <main className="flex flex-1 flex-col">
         {currentView === "landing" && (
           <LandingPage
-            petProfile={petProfile}
+            petProfile={selectedPet}
             onStartChat={() => {
               setSelectedRecord(null);
               setCurrentView("chat");
             }}
-            onRegisterPet={() => setShowProfileModal(true)}
+            onRegisterPet={() => {
+              setEditingPet(null);
+              setShowProfileModal(true);
+            }}
             onViewHistory={() => setCurrentView("history")}
+            onViewReport={() => setShowHealthReport(true)}
             historyCount={chatHistory.length}
           />
         )}
 
-        {currentView === "chat" && petProfile && (
+        {currentView === "chat" && selectedPet && (
           <ChatInterface
-            petProfile={petProfile}
+            petProfile={selectedPet}
             onBack={() => {
               setCurrentView("landing");
               setSelectedRecord(null);
@@ -347,12 +482,20 @@ export default function Home() {
 
       {showProfileModal && (
         <PetProfileModal
-          initialProfile={petProfile}
+          initialProfile={editingPet}
           onSave={(profile) => {
             savePetProfile(profile);
             setShowProfileModal(false);
           }}
-          onClose={() => setShowProfileModal(false)}
+          onClose={() => {
+            setShowProfileModal(false);
+            setEditingPet(null);
+          }}
+          onDelete={editingPet?.id ? () => {
+            handleDeletePet(editingPet.id!);
+            setShowProfileModal(false);
+            setEditingPet(null);
+          } : undefined}
         />
       )}
 
@@ -360,6 +503,20 @@ export default function Home() {
         <AuthModal
           onClose={() => setShowAuthModal(false)}
           onSuccess={() => setShowAuthModal(false)}
+        />
+      )}
+
+      {showHealthReport && selectedPet && (
+        <HealthReport
+          pet={selectedPet}
+          records={chatHistory}
+          onClose={() => setShowHealthReport(false)}
+        />
+      )}
+
+      {showNotificationSettings && (
+        <NotificationSettings
+          onClose={() => setShowNotificationSettings(false)}
         />
       )}
     </div>

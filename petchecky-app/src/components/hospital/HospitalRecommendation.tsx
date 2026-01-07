@@ -4,17 +4,22 @@ import { useState, useEffect, useCallback } from "react";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import HospitalMap, { Hospital } from "./HospitalMap";
 import HospitalList from "./HospitalList";
+import ReservationModal from "./ReservationModal";
 
 interface HospitalRecommendationProps {
   severity: "low" | "medium" | "high";
   isVisible: boolean;
   onClose: () => void;
+  petName?: string;
+  petSpecies?: "dog" | "cat";
 }
 
 export default function HospitalRecommendation({
   severity,
   isVisible,
   onClose,
+  petName,
+  petSpecies,
 }: HospitalRecommendationProps) {
   const {
     latitude,
@@ -27,6 +32,8 @@ export default function HospitalRecommendation({
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
+  const [reservationHospital, setReservationHospital] = useState<Hospital | null>(null);
+  const [showReservationSuccess, setShowReservationSuccess] = useState(false);
 
   // 위험도별 메시지
   const getSeverityConfig = () => {
@@ -216,6 +223,7 @@ export default function HospitalRecommendation({
             isLoading={isLoading}
             selectedHospital={selectedHospital}
             onSelect={setSelectedHospital}
+            onReservation={setReservationHospital}
           />
         </div>
 
@@ -246,6 +254,30 @@ export default function HospitalRecommendation({
           * 영업시간 및 진료 가능 여부는 병원에 직접 문의해주세요
         </p>
       </div>
+
+      {/* 예약 모달 */}
+      {reservationHospital && (
+        <ReservationModal
+          hospital={reservationHospital}
+          petName={petName}
+          petSpecies={petSpecies}
+          onClose={() => setReservationHospital(null)}
+          onSuccess={() => {
+            setReservationHospital(null);
+            setShowReservationSuccess(true);
+            setTimeout(() => setShowReservationSuccess(false), 3000);
+          }}
+        />
+      )}
+
+      {/* 예약 성공 토스트 */}
+      {showReservationSuccess && (
+        <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 z-[70] animate-fade-in">
+          <div className="rounded-full bg-green-500 px-6 py-3 text-white font-medium shadow-lg">
+            예약 요청이 완료되었습니다!
+          </div>
+        </div>
+      )}
     </div>
   );
 }
