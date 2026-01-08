@@ -126,6 +126,30 @@ export default function LandingPage({
       description: t.features.insurance.description,
       link: "/insurance",
     },
+    {
+      icon: "🔔",
+      title: t.features.reminders.title,
+      description: t.features.reminders.description,
+      link: "/reminders",
+    },
+    {
+      icon: "💾",
+      title: t.features.backup.title,
+      description: t.features.backup.description,
+      link: "/settings/backup",
+    },
+    {
+      icon: "📆",
+      title: t.features.calendar.title,
+      description: t.features.calendar.description,
+      link: "/calendar",
+    },
+    {
+      icon: "🚨",
+      title: t.features.emergency.title,
+      description: t.features.emergency.description,
+      link: "/emergency",
+    },
   ];
 
   const SYMPTOMS_LOCALIZED = [
