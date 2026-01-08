@@ -108,6 +108,18 @@ export const ja: TranslationKeys = {
       title: "緊急ガイド",
       description: "緊急時の対処法を確認しましょう。",
     },
+    qrPetId: {
+      title: "QRペットID",
+      description: "迷子になった時に連絡を受けられるQRコードを作成します。",
+    },
+    hospital: {
+      title: "動物病院を探す",
+      description: "近くの動物病院を探して予約できます。",
+    },
+    petSitter: {
+      title: "ペットシッター",
+      description: "信頼できるペットシッターを見つけましょう。",
+    },
   },
 
   // Symptoms
@@ -354,6 +366,42 @@ export const ja: TranslationKeys = {
     disclaimer: "このページは情報提供目的です。実際の保険加入は各保険会社にお問い合わせください。",
   },
 
+  // Pet Sitter
+  petSitter: {
+    title: "ペットシッター",
+    description: "信頼できるペットシッターにペットを預けましょう。",
+    selectPet: "お世話するペットを選択",
+    noSitters: "条件に合うペットシッターがいません",
+    verified: "認証済み",
+    perDay: "1日",
+    perHour: "1時間",
+    contact: "連絡する",
+    petType: "ペットの種類",
+    allPets: "すべて",
+    sortBy: "並び替え",
+    sortByDistance: "距離順",
+    sortByRating: "評価順",
+    sortByPrice: "価格順",
+    services: {
+      all: "すべて",
+      daycare: "デイケア",
+      boarding: "お預かり",
+      walking: "散歩",
+      grooming: "グルーミング",
+      training: "トレーニング",
+    },
+    safetyTips: "安全利用のヒント",
+    tip1: "初対面は公共の場所で行いましょう",
+    tip2: "シッターの身分証と資格を確認しましょう",
+    tip3: "ペットの健康状態を事前に共有しましょう",
+    contactTitle: "ペットシッターに連絡",
+    messageLabel: "メッセージ",
+    messagePlaceholder: "例：来週の月曜日から金曜日までお世話が必要です。ご連絡ください。",
+    messageSent: "メッセージが送信されました！",
+    messageDesc: "ペットシッターが確認後ご連絡いたします。",
+    disclaimer: "ペットシッター情報は参考用です。サービス利用前に十分な確認をお勧めします。",
+  },
+
   // Offline
   offline: {
     offline: "オフライン",
@@ -366,6 +414,38 @@ export const ja: TranslationKeys = {
     dataSaved: "データはローカルに保存されました。オンライン時に同期されます。",
     cachedData: "キャッシュデータ",
     lastSync: "最終同期",
+  },
+
+  // Share
+  share: {
+    button: "共有",
+    title: "共有",
+    copyLink: "リンクをコピー",
+    copied: "コピー完了!",
+    viewMore: "詳細を見る",
+    sharePet: "ペットを共有",
+    shareHealth: "健康記録を共有",
+  },
+
+  // QR Pet ID
+  qrPetId: {
+    title: "QRペットID",
+    description: "迷子になった時に連絡を受けられるQRコードを作成します。",
+    generate: "QRコードを生成",
+    download: "画像を保存",
+    print: "印刷",
+    petInfo: "ペット情報",
+    ownerInfo: "飼い主情報",
+    ownerName: "飼い主の名前",
+    ownerPhone: "電話番号",
+    emergencyNote: "備考（病気、アレルギーなど）",
+    howToUse: "使用方法",
+    step1: "QRコードを生成して保存",
+    step2: "首輪やIDタグに取り付け",
+    step3: "発見者がスキャンで連絡先を確認",
+    preview: "プレビュー",
+    noQr: "QRコード生成には情報を入力してください",
+    disclaimer: "個人情報はQRコードにのみ保存され、サーバーには送信されません。",
   },
 
   // Emergency
@@ -553,5 +633,21 @@ export const ja: TranslationKeys = {
     weekly: "毎週",
     monthly: "毎月",
     yearly: "毎年",
+  },
+  // Accessibility
+  accessibility: {
+    skipToMain: "本文へスキップ",
+    loading: "読み込み中",
+    openMenu: "メニューを開く",
+    closeMenu: "メニューを閉じる",
+    goBack: "戻る",
+    submit: "送信",
+    required: "必須",
+    selected: "選択済み",
+    notSelected: "未選択",
+    expandedTrue: "展開中",
+    expandedFalse: "折りたたみ",
+    pageOf: "{current} / {total} ページ",
+    newWindow: "新しいウィンドウで開く",
   },
 };

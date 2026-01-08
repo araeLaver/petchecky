@@ -150,6 +150,24 @@ export default function LandingPage({
       description: t.features.emergency.description,
       link: "/emergency",
     },
+    {
+      icon: "📱",
+      title: t.features.qrPetId.title,
+      description: t.features.qrPetId.description,
+      link: "/qr-pet-id",
+    },
+    {
+      icon: "🏥",
+      title: t.features.hospital.title,
+      description: t.features.hospital.description,
+      link: "/hospital",
+    },
+    {
+      icon: "🧑‍🤝‍🧑",
+      title: t.features.petSitter.title,
+      description: t.features.petSitter.description,
+      link: "/pet-sitter",
+    },
   ];
 
   const SYMPTOMS_LOCALIZED = [

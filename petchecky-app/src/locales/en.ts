@@ -108,6 +108,18 @@ export const en: TranslationKeys = {
       title: "Emergency Guide",
       description: "Learn how to handle emergency situations.",
     },
+    qrPetId: {
+      title: "QR Pet ID",
+      description: "Create a QR code for contact if your pet is lost.",
+    },
+    hospital: {
+      title: "Find Vet Clinics",
+      description: "Find nearby vet clinics and make reservations.",
+    },
+    petSitter: {
+      title: "Pet Sitter",
+      description: "Find trusted pet sitters near you.",
+    },
   },
 
   // Symptoms
@@ -354,6 +366,42 @@ export const en: TranslationKeys = {
     disclaimer: "This page is for informational purposes only. Please contact insurance providers directly for enrollment.",
   },
 
+  // Pet Sitter
+  petSitter: {
+    title: "Pet Sitter",
+    description: "Find trusted pet sitters to take care of your pet.",
+    selectPet: "Select pet for care",
+    noSitters: "No pet sitters match your criteria",
+    verified: "Verified",
+    perDay: "day",
+    perHour: "hour",
+    contact: "Contact",
+    petType: "Pet type",
+    allPets: "All",
+    sortBy: "Sort by",
+    sortByDistance: "Distance",
+    sortByRating: "Rating",
+    sortByPrice: "Price",
+    services: {
+      all: "All",
+      daycare: "Daycare",
+      boarding: "Boarding",
+      walking: "Walking",
+      grooming: "Grooming",
+      training: "Training",
+    },
+    safetyTips: "Safety Tips",
+    tip1: "Meet in a public place for the first time",
+    tip2: "Verify the sitter's ID and credentials",
+    tip3: "Share your pet's health information in advance",
+    contactTitle: "Contact Pet Sitter",
+    messageLabel: "Message",
+    messagePlaceholder: "e.g., I need care from Monday to Friday next week. Please contact me.",
+    messageSent: "Message sent!",
+    messageDesc: "The pet sitter will contact you after reviewing.",
+    disclaimer: "Pet sitter information is for reference. Please verify before using the service.",
+  },
+
   // Offline
   offline: {
     offline: "Offline",
@@ -366,6 +414,38 @@ export const en: TranslationKeys = {
     dataSaved: "Data saved locally. Will sync when online.",
     cachedData: "Cached Data",
     lastSync: "Last sync",
+  },
+
+  // Share
+  share: {
+    button: "Share",
+    title: "Share",
+    copyLink: "Copy Link",
+    copied: "Copied!",
+    viewMore: "View More",
+    sharePet: "Share My Pet",
+    shareHealth: "Share Health Record",
+  },
+
+  // QR Pet ID
+  qrPetId: {
+    title: "QR Pet ID",
+    description: "Create a QR code for contact if your pet is lost.",
+    generate: "Generate QR Code",
+    download: "Save Image",
+    print: "Print",
+    petInfo: "Pet Information",
+    ownerInfo: "Owner Information",
+    ownerName: "Owner Name",
+    ownerPhone: "Phone Number",
+    emergencyNote: "Notes (illness, allergies, etc.)",
+    howToUse: "How to Use",
+    step1: "Generate and save your QR code",
+    step2: "Attach to collar or ID tag",
+    step3: "Finder scans to see contact info",
+    preview: "Preview",
+    noQr: "Enter information to generate QR code",
+    disclaimer: "Personal info is only stored in QR code, not sent to server.",
   },
 
   // Emergency
@@ -553,5 +633,21 @@ export const en: TranslationKeys = {
     weekly: "Weekly",
     monthly: "Monthly",
     yearly: "Yearly",
+  },
+  // Accessibility
+  accessibility: {
+    skipToMain: "Skip to main content",
+    loading: "Loading",
+    openMenu: "Open menu",
+    closeMenu: "Close menu",
+    goBack: "Go back",
+    submit: "Submit",
+    required: "Required",
+    selected: "Selected",
+    notSelected: "Not selected",
+    expandedTrue: "Expanded",
+    expandedFalse: "Collapsed",
+    pageOf: "Page {current} of {total}",
+    newWindow: "Opens in new window",
   },
 };

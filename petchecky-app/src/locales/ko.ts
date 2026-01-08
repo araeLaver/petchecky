@@ -106,6 +106,18 @@ export const ko = {
       title: "응급상황 가이드",
       description: "응급 상황 시 대처 방법을 확인하세요.",
     },
+    qrPetId: {
+      title: "QR 펫 ID",
+      description: "분실 시 연락받을 수 있는 QR 코드를 생성하세요.",
+    },
+    hospital: {
+      title: "동물병원 찾기",
+      description: "가까운 동물병원을 찾고 예약하세요.",
+    },
+    petSitter: {
+      title: "펫시터 연결",
+      description: "믿을 수 있는 펫시터를 찾아보세요.",
+    },
   },
 
   // Symptoms
@@ -352,6 +364,38 @@ export const ko = {
     disclaimer: "이 페이지는 정보 제공 목적이며, 실제 보험 가입은 각 보험사를 통해 진행해주세요.",
   },
 
+  // Share
+  share: {
+    button: "공유하기",
+    title: "공유",
+    copyLink: "링크 복사",
+    copied: "복사됨!",
+    viewMore: "자세히 보기",
+    sharePet: "우리 아이 자랑하기",
+    shareHealth: "건강 기록 공유",
+  },
+
+  // QR Pet ID
+  qrPetId: {
+    title: "QR 펫 ID",
+    description: "분실 시 연락받을 수 있는 QR 코드를 생성하세요.",
+    generate: "QR 코드 생성",
+    download: "이미지 저장",
+    print: "인쇄",
+    petInfo: "반려동물 정보",
+    ownerInfo: "보호자 정보",
+    ownerName: "보호자 이름",
+    ownerPhone: "연락처",
+    emergencyNote: "특이사항 (질병, 알레르기 등)",
+    howToUse: "사용 방법",
+    step1: "QR 코드를 생성하고 저장하세요",
+    step2: "목걸이나 인식표에 부착하세요",
+    step3: "발견자가 스캔하면 연락처가 표시됩니다",
+    preview: "미리보기",
+    noQr: "QR 코드를 생성하려면 정보를 입력하세요",
+    disclaimer: "개인정보는 QR 코드에만 저장되며 서버에 전송되지 않습니다.",
+  },
+
   // Emergency
   emergency: {
     title: "응급상황 가이드",
@@ -539,6 +583,42 @@ export const ko = {
     yearly: "매년",
   },
 
+  // Pet Sitter
+  petSitter: {
+    title: "펫시터 연결",
+    description: "믿을 수 있는 펫시터를 찾아 우리 아이를 맡겨보세요.",
+    selectPet: "돌봄 받을 반려동물 선택",
+    noSitters: "조건에 맞는 펫시터가 없습니다",
+    verified: "인증됨",
+    perDay: "1일",
+    perHour: "1시간",
+    contact: "연락하기",
+    petType: "반려동물 종류",
+    allPets: "전체",
+    sortBy: "정렬 기준",
+    sortByDistance: "거리순",
+    sortByRating: "평점순",
+    sortByPrice: "가격순",
+    services: {
+      all: "전체",
+      daycare: "데이케어",
+      boarding: "위탁돌봄",
+      walking: "산책",
+      grooming: "미용",
+      training: "훈련",
+    },
+    safetyTips: "안전 이용 팁",
+    tip1: "첫 만남은 공개된 장소에서 진행하세요",
+    tip2: "펫시터의 신분증과 자격증을 확인하세요",
+    tip3: "반려동물 건강 상태를 사전에 공유하세요",
+    contactTitle: "펫시터에게 연락하기",
+    messageLabel: "메시지",
+    messagePlaceholder: "예: 다음 주 월요일부터 금요일까지 돌봄이 필요합니다. 연락 부탁드립니다.",
+    messageSent: "메시지가 전송되었습니다!",
+    messageDesc: "펫시터가 확인 후 연락드릴 예정입니다.",
+    disclaimer: "펫시터 정보는 참고용이며, 실제 서비스 이용 전 충분한 확인을 권장합니다.",
+  },
+
   // Offline
   offline: {
     offline: "오프라인",
@@ -551,6 +631,22 @@ export const ko = {
     dataSaved: "데이터가 로컬에 저장되었습니다. 온라인 시 동기화됩니다.",
     cachedData: "캐시된 데이터",
     lastSync: "마지막 동기화",
+  },
+  // Accessibility
+  accessibility: {
+    skipToMain: "본문으로 건너뛰기",
+    loading: "로딩 중",
+    openMenu: "메뉴 열기",
+    closeMenu: "메뉴 닫기",
+    goBack: "뒤로 가기",
+    submit: "제출하기",
+    required: "필수",
+    selected: "선택됨",
+    notSelected: "선택되지 않음",
+    expandedTrue: "펼쳐짐",
+    expandedFalse: "접힘",
+    pageOf: "{current} / {total} 페이지",
+    newWindow: "새 창에서 열림",
   },
 };
 

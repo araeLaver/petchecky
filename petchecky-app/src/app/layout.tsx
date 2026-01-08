@@ -9,6 +9,7 @@ import { LanguageProvider } from "@/contexts/LanguageContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import OfflineIndicator from "@/components/OfflineIndicator";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
+import SkipNavigation from "@/components/SkipNavigation";
 
 const notoSansKr = Noto_Sans_KR({
   variable: "--font-noto-sans-kr",
@@ -78,9 +79,12 @@ export default function RootLayout({
             <AuthProvider>
               <SubscriptionProvider>
                 <PushNotificationProvider>
+                  <SkipNavigation />
                   <ServiceWorkerRegistration />
                   <OfflineIndicator />
-                  {children}
+                  <div id="main-content">
+                    {children}
+                  </div>
                 </PushNotificationProvider>
               </SubscriptionProvider>
             </AuthProvider>
