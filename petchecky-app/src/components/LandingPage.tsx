@@ -63,6 +63,13 @@ export default function LandingPage({
       description: t.features.aiAnalysis.description,
     },
     {
+      icon: "📷",
+      title: t.features.imageAnalysis.title,
+      description: t.features.imageAnalysis.description,
+      link: "/image-analysis",
+      badge: "Premium+",
+    },
+    {
       icon: "⚡",
       title: t.features.riskAssessment.title,
       description: t.features.riskAssessment.description,
@@ -167,6 +174,42 @@ export default function LandingPage({
       title: t.features.petSitter.title,
       description: t.features.petSitter.description,
       link: "/pet-sitter",
+    },
+    {
+      icon: "💊",
+      title: t.features.medication.title,
+      description: t.features.medication.description,
+      link: "/medication",
+    },
+    {
+      icon: "🎓",
+      title: t.features.training.title,
+      description: t.features.training.description,
+      link: "/training",
+    },
+    {
+      icon: "🚫",
+      title: t.features.allergy.title,
+      description: t.features.allergy.description,
+      link: "/allergy",
+    },
+    {
+      icon: "💰",
+      title: t.features.expense.title,
+      description: t.features.expense.description,
+      link: "/expense",
+    },
+    {
+      icon: "📝",
+      title: t.features.vetRecords.title,
+      description: t.features.vetRecords.description,
+      link: "/vet-records",
+    },
+    {
+      icon: "🤖",
+      title: t.features.healthInsights.title,
+      description: t.features.healthInsights.description,
+      link: "/health-insights",
     },
   ];
 
@@ -276,7 +319,14 @@ export default function LandingPage({
             {FEATURES_LOCALIZED.map((feature) => {
               const content = (
                 <>
-                  <div className="mb-3 text-3xl">{feature.icon}</div>
+                  <div className="flex items-start justify-between mb-3">
+                    <span className="text-3xl">{feature.icon}</span>
+                    {"badge" in feature && feature.badge && (
+                      <span className="inline-block rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-2 py-0.5 text-xs font-semibold text-white">
+                        {feature.badge}
+                      </span>
+                    )}
+                  </div>
                   <h3 className="mb-2 font-semibold text-gray-800 dark:text-gray-100">{feature.title}</h3>
                   <p className="text-sm text-gray-500 leading-relaxed dark:text-gray-400">{feature.description}</p>
                   {"link" in feature && (

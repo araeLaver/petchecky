@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 
@@ -21,6 +22,7 @@ const CONSULTATION_PRICES = {
 };
 
 export default function VetConsultationPage() {
+  const router = useRouter();
   const { user } = useAuth();
   const { isPremium, isPremiumPlus } = useSubscription();
   const [step, setStep] = useState<"info" | "form" | "waiting" | "chat">("info");
@@ -439,7 +441,17 @@ export default function VetConsultationPage() {
               <button className="flex-1 rounded-lg border border-gray-300 py-3 font-medium text-gray-700 hover:bg-gray-50">
                 📞 음성 통화
               </button>
-              <button className="flex-1 rounded-lg border border-gray-300 py-3 font-medium text-gray-700 hover:bg-gray-50">
+              <button
+                onClick={() => {
+                  const params = new URLSearchParams({
+                    petName: form.petName,
+                    urgency: form.urgency,
+                    symptoms: form.symptoms,
+                  });
+                  router.push(`/vet-consultation/video?${params.toString()}`);
+                }}
+                className="flex-1 rounded-lg border border-blue-300 bg-blue-50 py-3 font-medium text-blue-700 hover:bg-blue-100"
+              >
                 📹 화상 통화
               </button>
             </div>
