@@ -1,5 +1,7 @@
 "use client";
 
+import { memo } from "react";
+
 interface WalkStatsProps {
   stats: {
     totalWalks: number;
@@ -10,7 +12,7 @@ interface WalkStatsProps {
   };
 }
 
-export default function WalkStats({ stats }: WalkStatsProps) {
+export default memo(function WalkStats({ stats }: WalkStatsProps) {
   const formatDuration = (minutes: number) => {
     const hours = Math.floor(minutes / 60);
     const mins = Math.round(minutes % 60);
@@ -66,4 +68,4 @@ export default function WalkStats({ stats }: WalkStatsProps) {
       </div>
     </div>
   );
-}
+})

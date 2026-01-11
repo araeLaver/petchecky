@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { WalkRecord } from "@/app/walk/page";
 
 interface WalkHistoryProps {
@@ -8,7 +9,7 @@ interface WalkHistoryProps {
   onDelete: (id: string) => void;
 }
 
-export default function WalkHistory({
+export default memo(function WalkHistory({
   records,
   onEdit,
   onDelete,
@@ -171,4 +172,4 @@ export default function WalkHistory({
       ))}
     </div>
   );
-}
+})

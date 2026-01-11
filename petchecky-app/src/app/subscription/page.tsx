@@ -1,13 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import PricingPlans from "@/components/subscription/PricingPlans";
 import SubscriptionStatus from "@/components/subscription/SubscriptionStatus";
-import BillingModal from "@/components/subscription/BillingModal";
 import { Plan } from "@/types/subscription";
+
+// 모달 동적 임포트 (결제 관련 번들 분리)
+const BillingModal = dynamic(() => import("@/components/subscription/BillingModal"), {
+  loading: () => null,
+});
 
 export default function SubscriptionPage() {
   const router = useRouter();

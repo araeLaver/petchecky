@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { Vaccination } from "@/app/vaccination/page";
 
 interface VaccinationCardProps {
@@ -8,7 +9,7 @@ interface VaccinationCardProps {
   onDelete: () => void;
 }
 
-export default function VaccinationCard({
+export default memo(function VaccinationCard({
   vaccination,
   onEdit,
   onDelete,
@@ -191,4 +192,4 @@ export default function VaccinationCard({
       </div>
     </div>
   );
-}
+})

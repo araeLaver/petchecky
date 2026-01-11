@@ -1,91 +1,47 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-
-interface Post {
-  id: string;
-  title: string;
-  content: string;
-  category: "question" | "tip" | "daily" | "review";
-  author_name: string;
-  author_id: string;
-  pet_species?: "dog" | "cat";
-  created_at: string;
-  likes: number;
-  comments_count: number;
-}
+import { CommunityPost } from "@/lib/supabase";
 
 const CATEGORIES = [
-  { id: "all", label: "전체", emoji: "📋" },
-  { id: "question", label: "질문", emoji: "❓" },
-  { id: "tip", label: "팁/정보", emoji: "💡" },
-  { id: "daily", label: "일상", emoji: "📸" },
-  { id: "review", label: "후기", emoji: "⭐" },
-];
-
-// 샘플 데이터
-const SAMPLE_POSTS: Post[] = [
-  {
-    id: "1",
-    title: "강아지 구토할 때 응급처치 방법 공유해요",
-    content: "저희 강아지가 자주 구토를 해서 수의사 선생님께 여쭤봤던 내용 공유합니다...",
-    category: "tip",
-    author_name: "멍멍이맘",
-    author_id: "user1",
-    pet_species: "dog",
-    created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    likes: 24,
-    comments_count: 8,
-  },
-  {
-    id: "2",
-    title: "고양이가 밥을 안 먹어요 ㅠㅠ",
-    content: "3일째 밥을 안 먹는데 병원 가봐야 할까요?",
-    category: "question",
-    author_name: "냥이집사",
-    author_id: "user2",
-    pet_species: "cat",
-    created_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-    likes: 5,
-    comments_count: 12,
-  },
-  {
-    id: "3",
-    title: "오늘 산책 다녀왔어요 🐕",
-    content: "날씨가 좋아서 공원 다녀왔습니다~",
-    category: "daily",
-    author_name: "산책러버",
-    author_id: "user3",
-    pet_species: "dog",
-    created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-    likes: 45,
-    comments_count: 3,
-  },
-  {
-    id: "4",
-    title: "펫체키 AI 상담 후기입니다",
-    content: "처음에는 반신반의했는데 생각보다 정확하게 증상을 분석해줘서 놀랐어요!",
-    category: "review",
-    author_name: "리뷰어",
-    author_id: "user4",
-    created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    likes: 18,
-    comments_count: 6,
-  },
+  { id: "all", label: "전체", emoji: "#" },
+  { id: "question", label: "질문", emoji: "?" },
+  { id: "tip", label: "팁/정보", emoji: "!" },
+  { id: "daily", label: "일상", emoji: "@" },
+  { id: "review", label: "후기", emoji: "*" },
 ];
 
 export default function CommunityPage() {
-  const { user } = useAuth();
-  const [posts, setPosts] = useState<Post[]>(SAMPLE_POSTS);
+  const { user, session } = useAuth();
+  const router = useRouter();
+  const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [showWriteModal, setShowWriteModal] = useState(false);
 
-  const filteredPosts = selectedCategory === "all"
-    ? posts
-    : posts.filter((post) => post.category === selectedCategory);
+  // 게시글 목록 조회
+  const fetchPosts = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const url = `/api/community/posts?category=${selectedCategory}&limit=50`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        setPosts(data.posts);
+      }
+    } catch (error) {
+      console.error("Error fetching posts:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedCategory]);
+
+  useEffect(() => {
+    fetchPosts();
+  }, [fetchPosts]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -103,6 +59,10 @@ export default function CommunityPage() {
 
   const getCategoryInfo = (category: string) => {
     return CATEGORIES.find((c) => c.id === category) || CATEGORIES[0];
+  };
+
+  const handlePostClick = (postId: string) => {
+    router.push(`/community/${postId}`);
   };
 
   return (
@@ -153,9 +113,9 @@ export default function CommunityPage() {
             <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-500 border-t-transparent mx-auto mb-3" />
             <p className="text-gray-500">로딩 중...</p>
           </div>
-        ) : filteredPosts.length === 0 ? (
+        ) : posts.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-2xl">
-            <span className="text-5xl">📝</span>
+            <span className="text-5xl">#</span>
             <p className="mt-4 text-gray-500">아직 게시글이 없습니다</p>
             {user && (
               <button
@@ -168,11 +128,12 @@ export default function CommunityPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {filteredPosts.map((post) => {
+            {posts.map((post) => {
               const categoryInfo = getCategoryInfo(post.category);
               return (
                 <article
                   key={post.id}
+                  onClick={() => handlePostClick(post.id)}
                   className="rounded-2xl bg-white border border-gray-100 p-4 hover:border-gray-200 transition-colors cursor-pointer"
                 >
                   <div className="flex items-start gap-3">
@@ -209,10 +170,10 @@ export default function CommunityPage() {
                         <span>{post.author_name}</span>
                         <span>{formatDate(post.created_at)}</span>
                         <span className="flex items-center gap-1">
-                          ❤️ {post.likes}
+                          ♥ {post.likes_count}
                         </span>
                         <span className="flex items-center gap-1">
-                          💬 {post.comments_count}
+                          # {post.comments_count}
                         </span>
                       </div>
                     </div>
@@ -242,10 +203,12 @@ export default function CommunityPage() {
       {/* 글쓰기 모달 */}
       {showWriteModal && (
         <WritePostModal
+          session={session}
           onClose={() => setShowWriteModal(false)}
           onSuccess={(newPost) => {
             setPosts([newPost, ...posts]);
             setShowWriteModal(false);
+            router.push(`/community/${newPost.id}`);
           }}
         />
       )}
@@ -276,45 +239,62 @@ export default function CommunityPage() {
 
 // 글쓰기 모달 컴포넌트
 function WritePostModal({
+  session,
   onClose,
   onSuccess,
 }: {
+  session: { access_token: string } | null;
   onClose: () => void;
-  onSuccess: (post: Post) => void;
+  onSuccess: (post: CommunityPost) => void;
 }) {
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
   const [form, setForm] = useState({
     title: "",
     content: "",
-    category: "question" as Post["category"],
+    category: "question" as CommunityPost["category"],
     pet_species: "" as "" | "dog" | "cat",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title.trim() || !form.content.trim()) return;
+    if (!session?.access_token) {
+      setError("로그인이 필요합니다");
+      return;
+    }
 
     setIsSubmitting(true);
+    setError("");
 
-    // 시뮬레이션
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    try {
+      const res = await fetch("/api/community/posts", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          title: form.title.trim(),
+          content: form.content.trim(),
+          category: form.category,
+          pet_species: form.pet_species || null,
+        }),
+      });
 
-    const newPost: Post = {
-      id: Date.now().toString(),
-      title: form.title,
-      content: form.content,
-      category: form.category,
-      author_name: user?.email?.split("@")[0] || "익명",
-      author_id: user?.id || "",
-      pet_species: form.pet_species || undefined,
-      created_at: new Date().toISOString(),
-      likes: 0,
-      comments_count: 0,
-    };
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "게시글 작성에 실패했습니다");
+      }
 
-    onSuccess(newPost);
-    setIsSubmitting(false);
+      const data = await res.json();
+      onSuccess(data.post);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "게시글 작성에 실패했습니다");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -326,11 +306,17 @@ function WritePostModal({
             onClick={onClose}
             className="rounded-full p-2 text-gray-400 hover:bg-gray-100"
           >
-            ✕
+            X
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          {error && (
+            <div className="p-3 rounded-lg bg-red-50 text-red-600 text-sm">
+              {error}
+            </div>
+          )}
+
           {/* 카테고리 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -341,7 +327,7 @@ function WritePostModal({
                 <button
                   key={category.id}
                   type="button"
-                  onClick={() => setForm((prev) => ({ ...prev, category: category.id as Post["category"] }))}
+                  onClick={() => setForm((prev) => ({ ...prev, category: category.id as CommunityPost["category"] }))}
                   className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
                     form.category === category.id
                       ? "bg-blue-500 text-white"

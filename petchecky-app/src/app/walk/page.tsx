@@ -1,12 +1,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useLanguage } from "@/contexts/LanguageContext";
-import WalkRecordModal from "@/components/walk/WalkRecordModal";
 import WalkStats from "@/components/walk/WalkStats";
 import WalkHistory from "@/components/walk/WalkHistory";
 import { PetProfile } from "@/app/page";
+
+// 모달 동적 임포트
+const WalkRecordModal = dynamic(() => import("@/components/walk/WalkRecordModal"), {
+  loading: () => null,
+});
 
 export interface WalkRecord {
   id: string;
