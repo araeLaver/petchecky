@@ -35,14 +35,14 @@ interface Pet {
   species: "dog" | "cat";
 }
 
-const FREQUENCY_OPTIONS = [
+const FREQUENCY_OPTIONS: { value: Medication["frequency"]; label: string; times: number }[] = [
   { value: "once", label: "1일 1회", times: 1 },
   { value: "twice", label: "1일 2회", times: 2 },
   { value: "three", label: "1일 3회", times: 3 },
   { value: "asNeeded", label: "필요시", times: 0 },
 ];
 
-const TIME_OF_DAY = [
+const TIME_OF_DAY: { value: Medication["timeOfDay"][number]; label: string; icon: string; time: string }[] = [
   { value: "morning", label: "아침", icon: "🌅", time: "08:00" },
   { value: "afternoon", label: "점심", icon: "☀️", time: "12:00" },
   { value: "evening", label: "저녁", icon: "🌆", time: "18:00" },
@@ -316,7 +316,7 @@ export default function MedicationPage() {
             <div className="space-y-4">
               {TIME_OF_DAY.map(time => {
                 const medsAtTime = filteredMedications.filter(m =>
-                  m.isActive && m.timeOfDay.includes(time.value as any)
+                  m.isActive && m.timeOfDay.includes(time.value)
                 );
                 if (medsAtTime.length === 0) return null;
 
@@ -553,7 +553,7 @@ export default function MedicationPage() {
                       <button
                         key={opt.value}
                         type="button"
-                        onClick={() => setForm({ ...form, frequency: opt.value as any })}
+                        onClick={() => setForm({ ...form, frequency: opt.value })}
                         className={`p-3 rounded-lg border text-sm ${
                           form.frequency === opt.value
                             ? "border-green-500 bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400"
@@ -576,13 +576,13 @@ export default function MedicationPage() {
                         key={time.value}
                         type="button"
                         onClick={() => {
-                          const newTimes = form.timeOfDay.includes(time.value as any)
+                          const newTimes = form.timeOfDay.includes(time.value)
                             ? form.timeOfDay.filter(t => t !== time.value)
-                            : [...form.timeOfDay, time.value as any];
+                            : [...form.timeOfDay, time.value];
                           setForm({ ...form, timeOfDay: newTimes.length > 0 ? newTimes : form.timeOfDay });
                         }}
                         className={`p-3 rounded-lg border text-sm flex items-center gap-2 ${
-                          form.timeOfDay.includes(time.value as any)
+                          form.timeOfDay.includes(time.value)
                             ? "border-green-500 bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400"
                             : "border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300"
                         }`}

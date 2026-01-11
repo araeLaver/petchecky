@@ -26,7 +26,7 @@ interface PushNotificationContextType {
 const PushNotificationContext = createContext<PushNotificationContextType | null>(null);
 
 export function PushNotificationProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, getAccessToken } = useAuth();
   const [isSupported, setIsSupported] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission>("default");
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -90,7 +90,8 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
 
       // 서버에 구독 정보 저장 (로그인 사용자만)
       if (user) {
-        await saveSubscriptionToServer(subscription, user.id);
+        const token = await getAccessToken();
+        await saveSubscriptionToServer(subscription, token);
       }
 
       setIsSubscribed(true);
@@ -101,7 +102,7 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
       setIsLoading(false);
       return false;
     }
-  }, [isSupported, user]);
+  }, [isSupported, user, getAccessToken]);
 
   // 알림 비활성화
   const disableNotifications = useCallback(async (): Promise<boolean> => {
@@ -114,7 +115,8 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
 
       // 서버에서 구독 정보 삭제 (로그인 사용자만)
       if (success && user) {
-        await removeSubscriptionFromServer(user.id);
+        const token = await getAccessToken();
+        await removeSubscriptionFromServer(token);
       }
 
       setIsSubscribed(false);
@@ -125,7 +127,7 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
       setIsLoading(false);
       return false;
     }
-  }, [isSupported, user]);
+  }, [isSupported, user, getAccessToken]);
 
   return (
     <PushNotificationContext.Provider

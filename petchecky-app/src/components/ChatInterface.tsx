@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { PetProfile } from "@/app/page";
+import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import QuickSymptoms from "./QuickSymptoms";
 import HospitalRecommendation from "./hospital/HospitalRecommendation";
@@ -25,6 +26,7 @@ interface ChatInterfaceProps {
 }
 
 export default function ChatInterface({ petProfile, onBack, onSaveChat, initialMessages, userId, onUsageUpdate }: ChatInterfaceProps) {
+  const { getAccessToken } = useAuth();
   const { isPremium, isPremiumPlus } = useSubscription();
   const [messages, setMessages] = useState<Message[]>(
     initialMessages || [
@@ -124,16 +126,24 @@ export default function ChatInterface({ petProfile, onBack, onSaveChat, initialM
     setIsLoading(true);
 
     try {
+      // 인증 토큰을 헤더에 포함하여 요청 (보안 강화)
+      const token = await getAccessToken();
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch("/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           message: userMessage.content,
           petProfile,
           history: messages.slice(-6),
-          userId,
-          isPremium,
-          isPremiumPlus,
+          // userId, isPremium, isPremiumPlus는 더 이상 클라이언트에서 전송하지 않음
+          // 서버에서 인증 토큰을 통해 직접 검증
           image: imageToSend
             ? { data: imageToSend.data, mimeType: imageToSend.mimeType }
             : undefined,

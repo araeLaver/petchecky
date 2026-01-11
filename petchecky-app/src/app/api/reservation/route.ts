@@ -1,13 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+import { authenticateRequest, supabaseAdmin, sanitizeUserInput } from "@/lib/auth";
+import { ApiErrors, getErrorMessage } from "@/lib/errors";
 
 interface ReservationRequest {
-  userId?: string;
   hospitalId: string;
   hospitalName: string;
   hospitalAddress: string;
@@ -23,23 +18,21 @@ interface ReservationRequest {
 
 export async function POST(request: NextRequest) {
   try {
+    // 서버 측 인증 검증
+    const authHeader = request.headers.get('authorization');
+    const { user } = await authenticateRequest(authHeader);
+
     const body: ReservationRequest = await request.json();
 
     // 필수 필드 검증
     if (!body.hospitalId || !body.petName || !body.preferredDate || !body.preferredTime || !body.contactPhone) {
-      return NextResponse.json(
-        { message: "필수 항목을 모두 입력해주세요." },
-        { status: 400 }
-      );
+      return ApiErrors.invalidInput("ko", "필수 항목을 모두 입력해주세요.");
     }
 
     // 연락처 형식 간단 검증
     const phoneRegex = /^[0-9]{2,3}-?[0-9]{3,4}-?[0-9]{4}$/;
     if (!phoneRegex.test(body.contactPhone.replace(/-/g, ""))) {
-      return NextResponse.json(
-        { message: "올바른 연락처를 입력해주세요." },
-        { status: 400 }
-      );
+      return ApiErrors.invalidInput("ko", "올바른 연락처를 입력해주세요.");
     }
 
     // 날짜 유효성 검사
@@ -48,28 +41,30 @@ export async function POST(request: NextRequest) {
     today.setHours(0, 0, 0, 0);
 
     if (selectedDate < today) {
-      return NextResponse.json(
-        { message: "오늘 이후 날짜를 선택해주세요." },
-        { status: 400 }
-      );
+      return ApiErrors.invalidInput("ko", "오늘 이후 날짜를 선택해주세요.");
     }
 
-    // 예약 데이터 저장
-    const { data, error } = await supabase
+    // 사용자 입력 값 정제 (프롬프트 인젝션 방지)
+    const sanitizedPetName = sanitizeUserInput(body.petName).slice(0, 50);
+    const sanitizedSymptoms = body.symptoms ? sanitizeUserInput(body.symptoms).slice(0, 500) : null;
+    const sanitizedNotes = body.notes ? sanitizeUserInput(body.notes).slice(0, 500) : null;
+
+    // 예약 데이터 저장 - 서버에서 검증된 user.id 사용
+    const { data, error } = await supabaseAdmin
       .from("reservations")
       .insert({
-        user_id: body.userId || null,
+        user_id: user?.id || null,  // 서버에서 검증된 사용자 ID
         hospital_id: body.hospitalId,
         hospital_name: body.hospitalName,
         hospital_address: body.hospitalAddress,
         hospital_phone: body.hospitalPhone,
-        pet_name: body.petName,
+        pet_name: sanitizedPetName,
         pet_species: body.petSpecies,
-        symptoms: body.symptoms || null,
+        symptoms: sanitizedSymptoms,
         preferred_date: body.preferredDate,
         preferred_time: body.preferredTime,
         contact_phone: body.contactPhone,
-        notes: body.notes || null,
+        notes: sanitizedNotes,
         status: "pending", // pending, confirmed, cancelled, completed
       })
       .select()
@@ -97,31 +92,27 @@ export async function POST(request: NextRequest) {
       reservation: data,
     });
   } catch (error) {
-    console.error("Reservation API error:", error);
-    return NextResponse.json(
-      { message: "예약 요청 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요." },
-      { status: 500 }
-    );
+    console.error("Reservation API error:", getErrorMessage(error));
+    return ApiErrors.serverError();
   }
 }
 
 // 사용자의 예약 내역 조회
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
+    // 서버 측 인증 검증
+    const authHeader = request.headers.get('authorization');
+    const { user, error: authError } = await authenticateRequest(authHeader);
 
-    if (!userId) {
-      return NextResponse.json(
-        { message: "로그인이 필요합니다." },
-        { status: 401 }
-      );
+    if (authError || !user) {
+      return ApiErrors.unauthorized();
     }
 
-    const { data, error } = await supabase
+    // 서버에서 검증된 user.id 사용
+    const { data, error } = await supabaseAdmin
       .from("reservations")
       .select("*")
-      .eq("user_id", userId)
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -134,10 +125,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ reservations: data });
   } catch (error) {
-    console.error("Reservation fetch error:", error);
-    return NextResponse.json(
-      { message: "예약 내역 조회 중 오류가 발생했습니다." },
-      { status: 500 }
-    );
+    console.error("Reservation fetch error:", getErrorMessage(error));
+    return ApiErrors.serverError();
   }
 }

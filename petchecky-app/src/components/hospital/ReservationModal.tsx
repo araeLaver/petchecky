@@ -35,7 +35,7 @@ export default function ReservationModal({
   petName = "",
   petSpecies = "dog",
 }: ReservationModalProps) {
-  const { user } = useAuth();
+  const { user, getAccessToken } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -73,11 +73,18 @@ export default function ReservationModal({
     setIsSubmitting(true);
 
     try {
+      // 인증 토큰을 헤더에 포함하여 요청 (보안 강화)
+      const token = await getAccessToken();
+      const headers: HeadersInit = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch("/api/reservation", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
-          userId: user?.id,
+          // userId는 서버에서 인증 토큰으로 검증
           hospitalId: hospital.id,
           hospitalName: hospital.name,
           hospitalAddress: hospital.roadAddress || hospital.address,

@@ -48,7 +48,7 @@ interface Pet {
   species: "dog" | "cat";
 }
 
-const CATEGORIES = [
+const CATEGORIES: { value: TrainingCommand["category"]; label: string; icon: string; color: string }[] = [
   { value: "basic", label: "기본 훈련", icon: "🎯", color: "blue" },
   { value: "advanced", label: "심화 훈련", icon: "🏆", color: "purple" },
   { value: "trick", label: "재주/묘기", icon: "🎪", color: "pink" },
@@ -514,7 +514,7 @@ export default function TrainingPage() {
                       <button
                         key={cat.value}
                         type="button"
-                        onClick={() => setForm({ ...form, category: cat.value as any })}
+                        onClick={() => setForm({ ...form, category: cat.value })}
                         className={`p-3 rounded-xl border text-sm flex items-center gap-2 ${
                           form.category === cat.value
                             ? "border-purple-500 bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
@@ -590,11 +590,11 @@ export default function TrainingPage() {
                     오늘의 성과
                   </label>
                   <div className="flex justify-center gap-2">
-                    {[1, 2, 3, 4, 5].map(rating => (
+                    {([1, 2, 3, 4, 5] as const).map(rating => (
                       <button
                         key={rating}
                         type="button"
-                        onClick={() => setSessionForm({ ...sessionForm, rating: rating as any })}
+                        onClick={() => setSessionForm({ ...sessionForm, rating })}
                         className={`w-12 h-12 rounded-xl text-2xl transition-all ${
                           sessionForm.rating >= rating
                             ? "bg-yellow-100 scale-110"

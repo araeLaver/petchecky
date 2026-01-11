@@ -3,8 +3,6 @@
 import { useState, useRef } from "react";
 import { PetProfile } from "@/app/page";
 import { ChatRecord } from "./ChatHistory";
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
 
 interface HealthReportProps {
   pet: PetProfile;
@@ -60,13 +58,19 @@ export default function HealthReport({ pet, records, onClose }: HealthReportProp
     return acc;
   }, {} as Record<string, SeverityStats>);
 
-  // PDF 생성
+  // PDF 생성 (라이브러리 동적 로드)
   const generatePDF = async () => {
     if (!reportRef.current) return;
 
     setIsGenerating(true);
 
     try {
+      // 라이브러리 동적 임포트 (필요 시에만 로드)
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import("html2canvas"),
+        import("jspdf"),
+      ]);
+
       const canvas = await html2canvas(reportRef.current, {
         scale: 2,
         useCORS: true,

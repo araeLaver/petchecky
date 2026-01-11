@@ -110,19 +110,25 @@ export async function getCurrentSubscription(): Promise<PushSubscription | null>
 }
 
 // 서버에 구독 정보 저장 (API 호출)
+// accessToken을 받아서 인증 헤더에 포함 (보안 강화)
 export async function saveSubscriptionToServer(
   subscription: PushSubscription,
-  userId: string
+  accessToken?: string | null
 ): Promise<boolean> {
   try {
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+    if (accessToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`;
+    }
+
     const response = await fetch('/api/push/subscribe', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify({
         subscription: subscription.toJSON(),
-        userId,
+        // userId는 서버에서 인증 토큰으로 검증
       }),
     });
 
@@ -138,14 +144,21 @@ export async function saveSubscriptionToServer(
 }
 
 // 서버에서 구독 정보 삭제 (API 호출)
-export async function removeSubscriptionFromServer(userId: string): Promise<boolean> {
+// accessToken을 받아서 인증 헤더에 포함 (보안 강화)
+export async function removeSubscriptionFromServer(accessToken?: string | null): Promise<boolean> {
   try {
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+    if (accessToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`;
+    }
+
     const response = await fetch('/api/push/unsubscribe', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ userId }),
+      headers,
+      // userId는 서버에서 인증 토큰으로 검증
+      body: JSON.stringify({}),
     });
 
     if (!response.ok) {

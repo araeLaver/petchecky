@@ -13,6 +13,7 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<{ error: Error | null }>;
   signInWithKakao: () => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  getAccessToken: () => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -82,6 +83,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   };
 
+  // 현재 세션의 access token을 가져오는 함수
+  const getAccessToken = async (): Promise<string | null> => {
+    try {
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      return currentSession?.access_token || null;
+    } catch (error) {
+      console.error('Failed to get access token:', error);
+      return null;
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -93,6 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signInWithGoogle,
         signInWithKakao,
         signOut,
+        getAccessToken,
       }}
     >
       {children}

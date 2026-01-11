@@ -1,15 +1,30 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import ChatInterface from "@/components/ChatInterface";
-import PetProfileModal from "@/components/PetProfileModal";
 import Header from "@/components/Header";
 import LandingPage from "@/components/LandingPage";
-import ChatHistory, { ChatRecord } from "@/components/ChatHistory";
-import AuthModal from "@/components/AuthModal";
-import HealthReport from "@/components/HealthReport";
-import NotificationSettings from "@/components/NotificationSettings";
+import { ChatRecord } from "@/components/ChatHistory";
 import { useAuth } from "@/contexts/AuthContext";
+
+// 모달 컴포넌트 Dynamic Import (초기 번들 크기 최적화)
+const PetProfileModal = dynamic(() => import("@/components/PetProfileModal"), {
+  loading: () => null,
+});
+const AuthModal = dynamic(() => import("@/components/AuthModal"), {
+  loading: () => null,
+});
+const HealthReport = dynamic(() => import("@/components/HealthReport"), {
+  loading: () => null,
+  ssr: false,
+});
+const NotificationSettings = dynamic(() => import("@/components/NotificationSettings"), {
+  loading: () => null,
+});
+const ChatHistory = dynamic(() => import("@/components/ChatHistory"), {
+  loading: () => <div className="p-4 text-center text-gray-500">로딩 중...</div>,
+});
 import {
   getPets,
   addPet,

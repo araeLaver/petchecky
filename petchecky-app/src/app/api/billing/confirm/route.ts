@@ -1,38 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { issueBillingKey, chargeBilling, getOrderName } from "@/lib/toss";
-
-// 서비스 역할 키로 Supabase 클라이언트 생성 (RLS 우회)
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { authenticateRequest, supabaseAdmin } from "@/lib/auth";
+import { ApiErrors, getErrorMessage } from "@/lib/errors";
 
 interface ConfirmRequest {
   authKey: string;
   customerKey: string;
-  userId: string;
   planType: "premium" | "premium_plus";
 }
 
 export async function POST(request: NextRequest) {
   try {
+    // 서버 사이드 인증 검증 - 클라이언트에서 보낸 userId를 신뢰하지 않음
+    const authHeader = request.headers.get('authorization');
+    const { user, error: authError } = await authenticateRequest(authHeader);
+
+    // 인증되지 않은 사용자는 결제 불가
+    if (!user) {
+      return ApiErrors.unauthorized();
+    }
+
+    const userId = user.id; // 서버에서 검증된 사용자 ID 사용
+
     const body: ConfirmRequest = await request.json();
-    const { authKey, customerKey, userId, planType } = body;
+    const { authKey, customerKey, planType } = body;
 
     // 입력 검증
-    if (!authKey || !customerKey || !userId || !planType) {
-      return NextResponse.json(
-        { error: "필수 파라미터가 누락되었습니다." },
-        { status: 400 }
-      );
+    if (!authKey || !customerKey || !planType) {
+      return ApiErrors.invalidInput("ko", "필수 파라미터가 누락되었습니다.");
     }
 
     if (!["premium", "premium_plus"].includes(planType)) {
-      return NextResponse.json(
-        { error: "유효하지 않은 플랜입니다." },
-        { status: 400 }
-      );
+      return ApiErrors.invalidInput("ko", "유효하지 않은 플랜입니다.");
     }
 
     // 1. 기존 활성 구독 확인
@@ -44,10 +43,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (existingSub) {
-      return NextResponse.json(
-        { error: "이미 활성화된 구독이 있습니다." },
-        { status: 400 }
-      );
+      return ApiErrors.invalidInput("ko", "이미 활성화된 구독이 있습니다.");
     }
 
     // 2. 빌링키 발급
@@ -55,11 +51,8 @@ export async function POST(request: NextRequest) {
     try {
       billingData = await issueBillingKey(authKey, customerKey);
     } catch (error) {
-      console.error("Billing key issue error:", error);
-      return NextResponse.json(
-        { error: error instanceof Error ? error.message : "빌링키 발급에 실패했습니다." },
-        { status: 400 }
-      );
+      console.error("Billing key issue error:", getErrorMessage(error));
+      return ApiErrors.invalidInput("ko", error instanceof Error ? error.message : "빌링키 발급에 실패했습니다.");
     }
 
     // 3. 첫 결제 실행
@@ -77,11 +70,8 @@ export async function POST(request: NextRequest) {
         orderName
       );
     } catch (error) {
-      console.error("Payment charge error:", error);
-      return NextResponse.json(
-        { error: error instanceof Error ? error.message : "결제에 실패했습니다." },
-        { status: 400 }
-      );
+      console.error("Payment charge error:", getErrorMessage(error));
+      return ApiErrors.invalidInput("ko", error instanceof Error ? error.message : "결제에 실패했습니다.");
     }
 
     // 4. 구독 정보 DB 저장
@@ -108,12 +98,9 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (subError) {
-      console.error("Subscription insert error:", subError);
+      console.error("Subscription insert error:", getErrorMessage(subError));
       // 결제는 되었지만 DB 저장 실패 - 수동 처리 필요
-      return NextResponse.json(
-        { error: "구독 정보 저장에 실패했습니다. 고객센터에 문의해주세요.", paymentKey: paymentData.paymentKey },
-        { status: 500 }
-      );
+      return ApiErrors.databaseError("ko", { paymentKey: paymentData.paymentKey });
     }
 
     // 5. 결제 내역 저장
@@ -145,10 +132,7 @@ export async function POST(request: NextRequest) {
       message: "구독이 시작되었습니다!",
     });
   } catch (error) {
-    console.error("Billing confirm error:", error);
-    return NextResponse.json(
-      { error: "결제 처리 중 오류가 발생했습니다." },
-      { status: 500 }
-    );
+    console.error("Billing confirm error:", getErrorMessage(error));
+    return ApiErrors.serverError();
   }
 }

@@ -39,7 +39,7 @@ interface Pet {
   species: "dog" | "cat";
 }
 
-const ALLERGY_TYPES = [
+const ALLERGY_TYPES: { value: Allergy["type"]; label: string; icon: string; color: string }[] = [
   { value: "food", label: "식품 알레르기", icon: "🍖", color: "orange" },
   { value: "environmental", label: "환경 알레르기", icon: "🌿", color: "green" },
   { value: "medication", label: "약물 알레르기", icon: "💊", color: "purple" },
@@ -637,7 +637,7 @@ export default function AllergyPage() {
                       <button
                         key={type.value}
                         type="button"
-                        onClick={() => setAllergyForm({ ...allergyForm, type: type.value as any })}
+                        onClick={() => setAllergyForm({ ...allergyForm, type: type.value })}
                         className={`p-3 rounded-xl border text-sm flex items-center gap-2 ${
                           allergyForm.type === type.value
                             ? "border-red-500 bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400"
@@ -682,11 +682,11 @@ export default function AllergyPage() {
                     심각도
                   </label>
                   <div className="grid grid-cols-3 gap-2">
-                    {["mild", "moderate", "severe"].map(sev => (
+                    {(["mild", "moderate", "severe"] as const).map(sev => (
                       <button
                         key={sev}
                         type="button"
-                        onClick={() => setAllergyForm({ ...allergyForm, severity: sev as any })}
+                        onClick={() => setAllergyForm({ ...allergyForm, severity: sev })}
                         className={`p-2 rounded-lg text-sm ${
                           allergyForm.severity === sev
                             ? getSeverityColor(sev)
@@ -767,16 +767,16 @@ export default function AllergyPage() {
                     제한 이유
                   </label>
                   <div className="grid grid-cols-2 gap-2">
-                    {[
+                    {([
                       { value: "allergy", label: "알레르기" },
                       { value: "intolerance", label: "불내증" },
                       { value: "medical", label: "의료적" },
                       { value: "preference", label: "기호" },
-                    ].map(reason => (
+                    ] as const).map(reason => (
                       <button
                         key={reason.value}
                         type="button"
-                        onClick={() => setRestrictionForm({ ...restrictionForm, reason: reason.value as any })}
+                        onClick={() => setRestrictionForm({ ...restrictionForm, reason: reason.value })}
                         className={`p-2 rounded-lg text-sm ${
                           restrictionForm.reason === reason.value
                             ? "bg-red-500 text-white"
@@ -857,11 +857,11 @@ export default function AllergyPage() {
                     심각도
                   </label>
                   <div className="grid grid-cols-3 gap-2">
-                    {["mild", "moderate", "severe"].map(sev => (
+                    {(["mild", "moderate", "severe"] as const).map(sev => (
                       <button
                         key={sev}
                         type="button"
-                        onClick={() => setReactionForm({ ...reactionForm, severity: sev as any })}
+                        onClick={() => setReactionForm({ ...reactionForm, severity: sev })}
                         className={`p-2 rounded-lg text-sm ${
                           reactionForm.severity === sev
                             ? getSeverityColor(sev)

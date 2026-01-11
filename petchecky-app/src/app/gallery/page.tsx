@@ -1,10 +1,20 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { PetProfile } from "@/app/page";
+import {
+  isIndexedDBSupported,
+  savePhoto as savePhotoToIDB,
+  getPhotosByPet,
+  deletePhoto as deletePhotoFromIDB,
+  saveAlbum as saveAlbumToIDB,
+  getAlbumsByPet,
+  deleteAlbum as deleteAlbumFromIDB,
+  migratePhotosFromLocalStorage,
+} from "@/lib/indexeddb";
 
 export interface GalleryPhoto {
   id: string;
@@ -50,32 +60,94 @@ export default function GalleryPage() {
     }
   }, []);
 
-  // Load photos and albums
+  // Load photos and albums from IndexedDB
   useEffect(() => {
-    if (selectedPetId) {
-      const savedPhotos = localStorage.getItem(`petchecky_photos_${selectedPetId}`);
-      const savedAlbums = localStorage.getItem(`petchecky_albums_${selectedPetId}`);
+    if (!selectedPetId) return;
 
-      setPhotos(savedPhotos ? JSON.parse(savedPhotos) : []);
-      setAlbums(savedAlbums ? JSON.parse(savedAlbums) : []);
-    }
+    const loadData = async () => {
+      if (!isIndexedDBSupported()) {
+        // IndexedDB 미지원 시 localStorage 폴백
+        const savedPhotos = localStorage.getItem(`petchecky_photos_${selectedPetId}`);
+        const savedAlbums = localStorage.getItem(`petchecky_albums_${selectedPetId}`);
+        setPhotos(savedPhotos ? JSON.parse(savedPhotos) : []);
+        setAlbums(savedAlbums ? JSON.parse(savedAlbums) : []);
+        return;
+      }
+
+      try {
+        // localStorage에서 IndexedDB로 마이그레이션 시도
+        await migratePhotosFromLocalStorage(selectedPetId);
+
+        // IndexedDB에서 데이터 로드
+        const [idbPhotos, idbAlbums] = await Promise.all([
+          getPhotosByPet(selectedPetId),
+          getAlbumsByPet(selectedPetId),
+        ]);
+
+        setPhotos(idbPhotos.map(p => ({
+          id: p.id,
+          petId: p.petId,
+          imageData: p.imageData,
+          caption: p.description,
+          date: p.date,
+          albumId: p.albumId,
+        })));
+        setAlbums(idbAlbums.map(a => ({
+          id: a.id,
+          petId: a.petId,
+          name: a.name,
+          coverPhotoId: a.coverPhotoId,
+          createdAt: new Date(a.createdAt).toISOString(),
+        })));
+      } catch (error) {
+        console.error("Failed to load from IndexedDB:", error);
+        // 에러 시 localStorage 폴백
+        const savedPhotos = localStorage.getItem(`petchecky_photos_${selectedPetId}`);
+        const savedAlbums = localStorage.getItem(`petchecky_albums_${selectedPetId}`);
+        setPhotos(savedPhotos ? JSON.parse(savedPhotos) : []);
+        setAlbums(savedAlbums ? JSON.parse(savedAlbums) : []);
+      }
+    };
+
+    loadData();
   }, [selectedPetId]);
 
-  // Save photos
-  const savePhotos = (newPhotos: GalleryPhoto[]) => {
-    if (selectedPetId) {
-      localStorage.setItem(`petchecky_photos_${selectedPetId}`, JSON.stringify(newPhotos));
-      setPhotos(newPhotos);
+  // Save single photo to IndexedDB
+  const savePhotoToStorage = useCallback(async (photo: GalleryPhoto) => {
+    if (!isIndexedDBSupported()) {
+      // localStorage 폴백
+      const current = photos;
+      const updated = [...current, photo];
+      localStorage.setItem(`petchecky_photos_${photo.petId}`, JSON.stringify(updated));
+      return;
     }
-  };
 
-  // Save albums
-  const saveAlbums = (newAlbums: Album[]) => {
-    if (selectedPetId) {
-      localStorage.setItem(`petchecky_albums_${selectedPetId}`, JSON.stringify(newAlbums));
-      setAlbums(newAlbums);
+    await savePhotoToIDB({
+      id: photo.id,
+      petId: photo.petId,
+      imageData: photo.imageData,
+      description: photo.caption,
+      date: photo.date,
+      albumId: photo.albumId,
+    });
+  }, [photos]);
+
+  // Save album to IndexedDB
+  const saveAlbumToStorage = useCallback(async (album: Album) => {
+    if (!isIndexedDBSupported()) {
+      // localStorage 폴백
+      const updated = [...albums, album];
+      localStorage.setItem(`petchecky_albums_${album.petId}`, JSON.stringify(updated));
+      return;
     }
-  };
+
+    await saveAlbumToIDB({
+      id: album.id,
+      petId: album.petId,
+      name: album.name,
+      coverPhotoId: album.coverPhotoId,
+    });
+  }, [albums]);
 
   // Handle file upload
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -91,16 +163,20 @@ export default function GalleryPage() {
       // Resize and compress image
       const imageData = await resizeImage(file, 800, 0.8);
 
-      newPhotos.push({
+      const photo: GalleryPhoto = {
         id: `${Date.now()}_${i}`,
         petId: selectedPetId,
         imageData,
         date: new Date().toISOString().split("T")[0],
         albumId: selectedAlbumId || undefined,
-      });
+      };
+
+      newPhotos.push(photo);
+      // IndexedDB에 저장
+      await savePhotoToStorage(photo);
     }
 
-    savePhotos([...photos, ...newPhotos]);
+    setPhotos(prev => [...prev, ...newPhotos]);
     setShowUploadModal(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -138,7 +214,7 @@ export default function GalleryPage() {
   };
 
   // Create album
-  const handleCreateAlbum = (name: string) => {
+  const handleCreateAlbum = async (name: string) => {
     if (!selectedPetId || !name.trim()) return;
 
     const newAlbum: Album = {
@@ -148,27 +224,31 @@ export default function GalleryPage() {
       createdAt: new Date().toISOString(),
     };
 
-    saveAlbums([...albums, newAlbum]);
+    await saveAlbumToStorage(newAlbum);
+    setAlbums(prev => [...prev, newAlbum]);
     setShowAlbumModal(false);
   };
 
   // Delete photo
-  const handleDeletePhoto = (photoId: string) => {
+  const handleDeletePhoto = async (photoId: string) => {
     if (confirm("이 사진을 삭제하시겠습니까?")) {
-      savePhotos(photos.filter((p) => p.id !== photoId));
+      if (isIndexedDBSupported()) {
+        await deletePhotoFromIDB(photoId);
+      }
+      setPhotos(prev => prev.filter((p) => p.id !== photoId));
       setSelectedPhoto(null);
     }
   };
 
   // Delete album
-  const handleDeleteAlbum = (albumId: string) => {
-    if (confirm("이 앨범을 삭제하시겠습니까? 앨범 내 사진은 유지됩니다.")) {
-      // Remove album association from photos
-      const updatedPhotos = photos.map((p) =>
-        p.albumId === albumId ? { ...p, albumId: undefined } : p
-      );
-      savePhotos(updatedPhotos);
-      saveAlbums(albums.filter((a) => a.id !== albumId));
+  const handleDeleteAlbum = async (albumId: string) => {
+    if (confirm("이 앨범을 삭제하시겠습니까? 앨범 내 사진도 함께 삭제됩니다.")) {
+      if (isIndexedDBSupported()) {
+        await deleteAlbumFromIDB(albumId);
+      }
+      // 앨범과 관련 사진 모두 삭제
+      setPhotos(prev => prev.filter((p) => p.albumId !== albumId));
+      setAlbums(prev => prev.filter((a) => a.id !== albumId));
       setSelectedAlbumId(null);
     }
   };

@@ -1,12 +1,20 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useLanguage } from "@/contexts/LanguageContext";
-import WeightChart from "@/components/health/WeightChart";
-import HealthRecordModal from "@/components/health/HealthRecordModal";
 import HealthRecordList from "@/components/health/HealthRecordList";
 import { PetProfile } from "@/app/page";
+
+// 차트 컴포넌트 Dynamic Import (recharts 번들 분리)
+const WeightChart = dynamic(() => import("@/components/health/WeightChart"), {
+  loading: () => <div className="h-64 flex items-center justify-center text-gray-400">차트 로딩 중...</div>,
+  ssr: false,
+});
+const HealthRecordModal = dynamic(() => import("@/components/health/HealthRecordModal"), {
+  loading: () => null,
+});
 
 export interface HealthRecord {
   id: string;

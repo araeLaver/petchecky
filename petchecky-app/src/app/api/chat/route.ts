@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUsage, incrementUsage, MONTHLY_FREE_LIMIT } from "@/lib/supabase";
+import { getUsage, incrementUsage } from "@/lib/supabase";
+import { authenticateRequest, sanitizeUserInput, sanitizePetProfile } from "@/lib/auth";
+import { LIMITS, API_CONFIG } from "@/lib/constants";
+import { ApiErrors, getErrorMessage } from "@/lib/errors";
+import { analyzeCombinedSeverity } from "@/lib/severity";
 
 interface PetProfile {
   name: string;
@@ -18,9 +22,6 @@ interface ChatRequest {
   message: string;
   petProfile: PetProfile;
   history: Message[];
-  userId?: string; // 로그인 사용자 ID
-  isPremium?: boolean; // 프리미엄 구독자 여부
-  isPremiumPlus?: boolean; // 프리미엄+ 구독자 여부
   image?: {
     data: string; // Base64 encoded image
     mimeType: string; // image/jpeg, image/png, etc.
@@ -46,41 +47,25 @@ const SYSTEM_PROMPT = `당신은 반려동물 건강 상담 AI 전문가 "펫체
 - 반려동물 정보(종류, 품종, 나이, 체중)를 고려하세요
 - 절대 JSON 형식으로 응답하지 마세요. 일반 텍스트로만 응답하세요.`;
 
-// 위험도 자동 판단 함수
-function analyzeSeverity(message: string, response: string): "low" | "medium" | "high" {
-  const combined = (message + " " + response).toLowerCase();
-
-  // 고위험 키워드
-  const highRisk = [
-    "응급", "즉시 병원", "바로 병원", "빨리 병원", "위험",
-    "호흡곤란", "의식", "경련", "발작", "출혈", "중독",
-    "먹지 못", "물을 못", "탈수", "쇼크", "마비"
-  ];
-
-  // 중위험 키워드
-  const mediumRisk = [
-    "병원 방문", "수의사 상담", "진료", "검사",
-    "지속", "악화", "열", "구토", "설사", "기침",
-    "절뚝", "통증", "붓기", "염증"
-  ];
-
-  if (highRisk.some(keyword => combined.includes(keyword))) {
-    return "high";
-  }
-
-  if (mediumRisk.some(keyword => combined.includes(keyword))) {
-    return "medium";
-  }
-
-  return "low";
-}
-
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { message, petProfile, history, userId, isPremium, isPremiumPlus, image }: ChatRequest = body;
+    // 서버 사이드 인증 검증 - 클라이언트에서 보낸 userId, isPremium을 신뢰하지 않음
+    const authHeader = request.headers.get('authorization');
+    const { user, subscription, error: authError } = await authenticateRequest(authHeader);
 
-    // 이미지 분석은 프리미엄+ 전용
+    if (authError) {
+      console.warn('Auth warning:', authError);
+    }
+
+    const body = await request.json();
+    const { message, petProfile: rawPetProfile, history, image }: ChatRequest = body;
+
+    // 서버에서 검증한 인증 정보 사용
+    const userId = user?.id;
+    const isPremium = subscription.isPremium;
+    const isPremiumPlus = subscription.isPremiumPlus;
+
+    // 이미지 분석은 프리미엄+ 전용 (서버에서 검증된 구독 상태 사용)
     if (image && !isPremiumPlus) {
       return NextResponse.json(
         {
@@ -92,23 +77,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 로그인 사용자 사용량 체크 (프리미엄 구독자는 무제한)
+    // 로그인 사용자 사용량 체크 (서버에서 검증된 구독 상태 사용)
     if (userId && !isPremium) {
       const currentUsage = await getUsage(userId);
-      if (currentUsage >= MONTHLY_FREE_LIMIT) {
+      if (currentUsage >= LIMITS.MONTHLY_FREE_MESSAGES) {
         return NextResponse.json(
           {
-            message: `이번 달 무료 상담 횟수(${MONTHLY_FREE_LIMIT}회)를 모두 사용했어요. 프리미엄 구독으로 업그레이드하시면 무제한으로 이용할 수 있어요!`,
+            message: `이번 달 무료 상담 횟수(${LIMITS.MONTHLY_FREE_MESSAGES}회)를 모두 사용했어요. 프리미엄 구독으로 업그레이드하시면 무제한으로 이용할 수 있어요!`,
             severity: "low",
             limitExceeded: true,
             usage: currentUsage,
-            limit: MONTHLY_FREE_LIMIT,
+            limit: LIMITS.MONTHLY_FREE_MESSAGES,
             showUpgrade: true
           },
           { status: 429 }
         );
       }
     }
+
+    // 펫 프로필 정제 (프롬프트 인젝션 방어)
+    const petProfile = sanitizePetProfile(rawPetProfile);
 
     // 입력 유효성 검사
     if (!message || typeof message !== "string" || message.trim().length === 0) {
@@ -118,9 +106,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (message.length > 1000) {
+    if (message.length > LIMITS.MESSAGE_MAX_LENGTH) {
       return NextResponse.json(
-        { message: "메시지가 너무 깁니다. 1000자 이내로 입력해주세요.", severity: "low" },
+        { message: `메시지가 너무 깁니다. ${LIMITS.MESSAGE_MAX_LENGTH}자 이내로 입력해주세요.`, severity: "low" },
         { status: 400 }
       );
     }
@@ -132,6 +120,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 사용자 메시지 정제 (프롬프트 인젝션 방어)
+    const sanitizedMessage = sanitizeUserInput(message);
+
+    // 히스토리 메시지 정제
+    const sanitizedHistory = (history || []).slice(-4).map((msg) => ({
+      role: msg.role,
+      content: sanitizeUserInput(msg.content),
+    }));
+
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
@@ -140,6 +137,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 정제된 데이터로 컨텍스트 생성
     const petContext = `
 반려동물 정보:
 - 이름: ${petProfile.name}
@@ -148,8 +146,7 @@ export async function POST(request: NextRequest) {
 - 나이: ${petProfile.age}세
 - 체중: ${petProfile.weight}kg`;
 
-    const conversationHistory = history
-      .slice(-4)
+    const conversationHistory = sanitizedHistory
       .map((msg) => `${msg.role === "user" ? "보호자" : "펫체키"}: ${msg.content}`)
       .join("\n");
 
@@ -158,12 +155,13 @@ export async function POST(request: NextRequest) {
       ? `\n\n[이미지 분석 요청]\n보호자가 반려동물의 사진을 첨부했습니다. 이미지에서 보이는 증상이나 상태를 분석하고, 보호자의 질문과 함께 종합적인 건강 상담을 제공해주세요.`
       : "";
 
+    // 정제된 메시지 사용
     const fullPrompt = `${SYSTEM_PROMPT}${imagePrompt}
 
 ${petContext}
 
 ${conversationHistory ? `이전 대화:\n${conversationHistory}\n` : ""}
-보호자: ${message}
+보호자: ${sanitizedMessage}
 
 펫체키:`;
 
@@ -184,7 +182,7 @@ ${conversationHistory ? `이전 대화:\n${conversationHistory}\n` : ""}
     parts.push({ text: fullPrompt });
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      `${API_CONFIG.GEMINI_BASE_URL}/${API_CONFIG.GEMINI_MODEL}:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: {
@@ -242,8 +240,8 @@ ${conversationHistory ? `이전 대화:\n${conversationHistory}\n` : ""}
       .replace(/```[\s\S]*?```/g, "")
       .trim();
 
-    // 위험도 자동 판단
-    const severity = analyzeSeverity(message, cleanMessage);
+    // 위험도 자동 판단 (공통 유틸리티 사용)
+    const severity = analyzeCombinedSeverity(message, cleanMessage);
 
     // 로그인 사용자 사용량 증가 (프리미엄 구독자는 카운트 제외)
     if (userId && !isPremium) {
@@ -255,7 +253,7 @@ ${conversationHistory ? `이전 대화:\n${conversationHistory}\n` : ""}
       severity,
     });
   } catch (error) {
-    console.error("Chat API Error:", error);
+    console.error("Chat API Error:", getErrorMessage(error));
     return NextResponse.json(
       {
         message: "죄송합니다. 일시적인 오류가 발생했어요. 잠시 후 다시 시도해주세요.",

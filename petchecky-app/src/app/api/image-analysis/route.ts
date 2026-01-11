@@ -1,4 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { authenticateRequest, sanitizeUserInput } from "@/lib/auth";
+import { API_CONFIG, FILE_LIMITS, LIMITS, Language } from "@/lib/constants";
+import { getErrorMessage } from "@/lib/errors";
+import { analyzeSeverity } from "@/lib/severity";
 
 interface ImageAnalysisRequest {
   image: {
@@ -114,39 +118,23 @@ Notes:
   return prompts[language as keyof typeof prompts] || prompts.ko;
 }
 
-function analyzeSeverity(response: string, language: string): "low" | "medium" | "high" {
-  const lowerResponse = response.toLowerCase();
-
-  const highRiskKeywords = {
-    ko: ["응급", "즉시 병원", "바로 병원", "위험", "심각", "감염", "출혈", "종양", "악성"],
-    en: ["emergency", "immediately", "urgent", "dangerous", "serious", "infection", "bleeding", "tumor", "malignant"],
-    ja: ["緊急", "直ちに病院", "危険", "深刻", "感染", "出血", "腫瘍", "悪性"],
-  };
-
-  const mediumRiskKeywords = {
-    ko: ["병원 방문", "수의사 상담", "진료", "검사", "주의", "염증", "이상", "확인 필요"],
-    en: ["vet visit", "consult", "examination", "attention", "inflammation", "abnormal", "check needed"],
-    ja: ["病院受診", "獣医師", "診察", "検査", "注意", "炎症", "異常", "確認必要"],
-  };
-
-  const keywords = {
-    high: highRiskKeywords[language as keyof typeof highRiskKeywords] || highRiskKeywords.ko,
-    medium: mediumRiskKeywords[language as keyof typeof mediumRiskKeywords] || mediumRiskKeywords.ko,
-  };
-
-  if (keywords.high.some(keyword => lowerResponse.includes(keyword))) {
-    return "high";
-  }
-
-  if (keywords.medium.some(keyword => lowerResponse.includes(keyword))) {
-    return "medium";
-  }
-
-  return "low";
-}
-
 export async function POST(request: NextRequest) {
   try {
+    // 서버 사이드 인증 검증 - 프리미엄+ 구독자만 이미지 분석 가능
+    const authHeader = request.headers.get('authorization');
+    const { user, subscription, error: authError } = await authenticateRequest(authHeader);
+
+    // 이미지 분석은 프리미엄+ 전용 기능 (서버에서 검증)
+    if (!subscription.isPremiumPlus) {
+      return NextResponse.json(
+        {
+          message: "이미지 분석은 프리미엄+ 구독자 전용 기능입니다. 업그레이드하시면 반려동물 사진으로 건강 상태를 분석받을 수 있어요!",
+          requirePremiumPlus: true,
+        },
+        { status: 403 }
+      );
+    }
+
     const body: ImageAnalysisRequest = await request.json();
     const { image, category, description, petName, language = "ko" } = body;
 
@@ -157,6 +145,18 @@ export async function POST(request: NextRequest) {
           message: language === "ko" ? "이미지가 필요합니다." :
                    language === "ja" ? "画像が必要です。" :
                    "Image is required.",
+        },
+        { status: 400 }
+      );
+    }
+
+    // 이미지 mime type 검증 (상수 사용)
+    if (!FILE_LIMITS.ALLOWED_IMAGE_TYPES.includes(image.mimeType as typeof FILE_LIMITS.ALLOWED_IMAGE_TYPES[number])) {
+      return NextResponse.json(
+        {
+          message: language === "ko" ? "지원하지 않는 이미지 형식입니다." :
+                   language === "ja" ? "サポートされていない画像形式です。" :
+                   "Unsupported image format.",
         },
         { status: 400 }
       );
@@ -175,21 +175,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 사용자 입력 정제 (프롬프트 인젝션 방어)
+    const sanitizedDescription = description ? sanitizeUserInput(description) : undefined;
+    const sanitizedPetName = petName ? sanitizeUserInput(petName).slice(0, 50) : undefined;
+
+    // 카테고리 검증
+    const validCategories = ['skin', 'eye', 'ear', 'teeth', 'wound', 'other'];
+    const sanitizedCategory = validCategories.includes(category) ? category : 'other';
+
     // Build prompt
-    const systemPrompt = getSystemPrompt(language, category, petName);
-    const userPrompt = description
-      ? (language === "ko" ? `보호자 설명: ${description}\n\n위 사진을 분석해주세요.` :
-         language === "ja" ? `飼い主の説明: ${description}\n\n上の写真を分析してください。` :
-         `Owner's description: ${description}\n\nPlease analyze the above photo.`)
+    const systemPrompt = getSystemPrompt(language, sanitizedCategory, sanitizedPetName);
+    const userPrompt = sanitizedDescription
+      ? (language === "ko" ? `보호자 설명: ${sanitizedDescription}\n\n위 사진을 분석해주세요.` :
+         language === "ja" ? `飼い主の説明: ${sanitizedDescription}\n\n上の写真を分析してください。` :
+         `Owner's description: ${sanitizedDescription}\n\nPlease analyze the above photo.`)
       : (language === "ko" ? "위 사진을 분석해주세요." :
          language === "ja" ? "上の写真を分析してください。" :
          "Please analyze the above photo.");
 
     const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
 
-    // Call Gemini API
+    // Call Gemini API (상수 사용)
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      `${API_CONFIG.GEMINI_BASE_URL}/${API_CONFIG.GEMINI_MODEL}:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: {
@@ -243,8 +251,8 @@ export async function POST(request: NextRequest) {
       .replace(/```[\s\S]*?```/g, "")
       .trim();
 
-    // Determine severity
-    const severity = analyzeSeverity(cleanAnalysis, language);
+    // Determine severity (공통 유틸리티 사용)
+    const severity = analyzeSeverity(cleanAnalysis, language as Language);
 
     return NextResponse.json({
       analysis: cleanAnalysis || (language === "ko" ? "이미지를 분석할 수 없습니다. 다른 사진을 시도해주세요." :
@@ -253,7 +261,7 @@ export async function POST(request: NextRequest) {
       severity,
     });
   } catch (error) {
-    console.error("Image Analysis API Error:", error);
+    console.error("Image Analysis API Error:", getErrorMessage(error));
     return NextResponse.json(
       {
         message: "일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",

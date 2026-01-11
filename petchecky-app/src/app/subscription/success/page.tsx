@@ -8,7 +8,7 @@ import { useSubscription } from "@/contexts/SubscriptionContext";
 function SuccessContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user } = useAuth();
+  const { user, getAccessToken } = useAuth();
   const { refreshSubscription } = useSubscription();
   const [status, setStatus] = useState<"processing" | "success" | "error">("processing");
   const [message, setMessage] = useState("결제를 처리하고 있습니다...");
@@ -35,16 +35,23 @@ function SuccessContent() {
           throw new Error("유효하지 않은 플랜입니다.");
         }
 
+        // 인증 토큰을 헤더에 포함하여 요청 (보안 강화)
+        const token = await getAccessToken();
+        const headers: HeadersInit = {
+          'Content-Type': 'application/json',
+        };
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+
         // 빌링키 발급 및 결제 확인
         const response = await fetch("/api/billing/confirm", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers,
           body: JSON.stringify({
             authKey,
             customerKey: customerKey || user.id,
-            userId: user.id,
+            // userId는 더 이상 클라이언트에서 전송하지 않음 - 서버에서 인증 토큰으로 검증
             planType,
           }),
         });

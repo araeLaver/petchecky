@@ -31,7 +31,7 @@ const ANALYSIS_CATEGORIES: { id: AnalysisCategory; icon: string; labelKo: string
 const STORAGE_KEY = "petchecky_image_analyses";
 
 export default function ImageAnalysisPage() {
-  const { user } = useAuth();
+  const { user, getAccessToken } = useAuth();
   const { isPremiumPlus } = useSubscription();
   const { language } = useLanguage();
   const [selectedCategory, setSelectedCategory] = useState<AnalysisCategory>("skin");
@@ -126,9 +126,16 @@ export default function ImageAnalysisPage() {
                          categoryLabel?.labelEn;
 
     try {
+      // 인증 토큰을 헤더에 포함하여 요청 (보안 강화)
+      const token = await getAccessToken();
+      const headers: HeadersInit = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch("/api/image-analysis", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           image: {
             data: selectedImage.data,

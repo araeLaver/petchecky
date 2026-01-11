@@ -24,6 +24,8 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const { getAccessToken } = useAuth();
+
   const fetchSubscription = useCallback(async () => {
     if (!user) {
       setSubscription(null);
@@ -35,7 +37,16 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch(`/api/subscription?userId=${user.id}`);
+      // 인증 토큰을 헤더에 포함하여 요청 (보안 강화)
+      const token = await getAccessToken();
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch('/api/subscription', { headers });
       const data = await response.json();
 
       if (response.ok) {
@@ -49,7 +60,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     } finally {
       setIsLoading(false);
     }
-  }, [user]);
+  }, [user, getAccessToken]);
 
   useEffect(() => {
     fetchSubscription();
@@ -59,8 +70,18 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     if (!user) return false;
 
     try {
-      const response = await fetch(`/api/subscription?userId=${user.id}`, {
+      // 인증 토큰을 헤더에 포함하여 요청 (보안 강화)
+      const token = await getAccessToken();
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch('/api/subscription', {
         method: "DELETE",
+        headers,
       });
 
       if (response.ok) {
