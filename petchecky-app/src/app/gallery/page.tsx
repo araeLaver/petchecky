@@ -15,6 +15,7 @@ import {
   deleteAlbum as deleteAlbumFromIDB,
   migratePhotosFromLocalStorage,
 } from "@/lib/indexeddb";
+import { safeJsonParse } from "@/lib/safeJson";
 
 export interface GalleryPhoto {
   id: string;
@@ -52,9 +53,9 @@ export default function GalleryPage() {
   useEffect(() => {
     const savedPets = localStorage.getItem("petchecky_pets");
     if (savedPets) {
-      const parsedPets = JSON.parse(savedPets);
+      const parsedPets = safeJsonParse<PetProfile[]>(savedPets, []);
       setPets(parsedPets);
-      if (parsedPets.length > 0) {
+      if (parsedPets.length > 0 && parsedPets[0].id) {
         setSelectedPetId(parsedPets[0].id);
       }
     }
@@ -69,8 +70,8 @@ export default function GalleryPage() {
         // IndexedDB 미지원 시 localStorage 폴백
         const savedPhotos = localStorage.getItem(`petchecky_photos_${selectedPetId}`);
         const savedAlbums = localStorage.getItem(`petchecky_albums_${selectedPetId}`);
-        setPhotos(savedPhotos ? JSON.parse(savedPhotos) : []);
-        setAlbums(savedAlbums ? JSON.parse(savedAlbums) : []);
+        setPhotos(safeJsonParse<GalleryPhoto[]>(savedPhotos, []));
+        setAlbums(safeJsonParse<Album[]>(savedAlbums, []));
         return;
       }
 
@@ -104,8 +105,8 @@ export default function GalleryPage() {
         // 에러 시 localStorage 폴백
         const savedPhotos = localStorage.getItem(`petchecky_photos_${selectedPetId}`);
         const savedAlbums = localStorage.getItem(`petchecky_albums_${selectedPetId}`);
-        setPhotos(savedPhotos ? JSON.parse(savedPhotos) : []);
-        setAlbums(savedAlbums ? JSON.parse(savedAlbums) : []);
+        setPhotos(safeJsonParse<GalleryPhoto[]>(savedPhotos, []));
+        setAlbums(safeJsonParse<Album[]>(savedAlbums, []));
       }
     };
 

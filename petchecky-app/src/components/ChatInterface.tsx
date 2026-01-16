@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { PetProfile } from "@/app/page";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,6 +14,45 @@ interface Message {
   content: string;
   severity?: "low" | "medium" | "high";
   image?: string; // Base64 이미지 URL (미리보기용)
+}
+
+// 컴포넌트 외부로 이동하여 불필요한 재생성 방지
+function getSeverityStyle(severity?: "low" | "medium" | "high"): string {
+  switch (severity) {
+    case "high":
+      return "border-l-4 border-red-500 bg-red-50";
+    case "medium":
+      return "border-l-4 border-yellow-500 bg-yellow-50";
+    case "low":
+      return "border-l-4 border-green-500 bg-green-50";
+    default:
+      return "bg-gray-100";
+  }
+}
+
+function getSeverityBadge(severity?: "low" | "medium" | "high") {
+  switch (severity) {
+    case "high":
+      return (
+        <span className="mb-2 inline-block rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700">
+          🚨 위험 - 병원 방문 권장
+        </span>
+      );
+    case "medium":
+      return (
+        <span className="mb-2 inline-block rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-700">
+          ⚠️ 주의 - 경과 관찰 필요
+        </span>
+      );
+    case "low":
+      return (
+        <span className="mb-2 inline-block rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
+          ✅ 안심 - 일반적인 증상
+        </span>
+      );
+    default:
+      return null;
+  }
 }
 
 interface ChatInterfaceProps {
@@ -47,7 +86,7 @@ export default function ChatInterface({ petProfile, onBack, onSaveChat, initialM
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 이미지 선택 핸들러
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -80,12 +119,12 @@ export default function ChatInterface({ petProfile, onBack, onSaveChat, initialM
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
-  };
+  }, []);
 
   // 이미지 제거
-  const handleRemoveImage = () => {
+  const handleRemoveImage = useCallback(() => {
     setSelectedImage(null);
-  };
+  }, []);
 
   // 채팅 종료 시 저장
   useEffect(() => {
@@ -96,17 +135,17 @@ export default function ChatInterface({ petProfile, onBack, onSaveChat, initialM
     };
   }, [messages, lastSeverity, onSaveChat]);
 
-  const handleQuickSymptom = (symptom: string) => {
+  const handleQuickSymptom = useCallback((symptom: string) => {
     setInput(symptom);
-  };
+  }, []);
 
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  }, []);
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, scrollToBottom]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -200,44 +239,6 @@ export default function ChatInterface({ petProfile, onBack, onSaveChat, initialM
     }
   };
 
-  const getSeverityStyle = (severity?: "low" | "medium" | "high") => {
-    switch (severity) {
-      case "high":
-        return "border-l-4 border-red-500 bg-red-50";
-      case "medium":
-        return "border-l-4 border-yellow-500 bg-yellow-50";
-      case "low":
-        return "border-l-4 border-green-500 bg-green-50";
-      default:
-        return "bg-gray-100";
-    }
-  };
-
-  const getSeverityBadge = (severity?: "low" | "medium" | "high") => {
-    switch (severity) {
-      case "high":
-        return (
-          <span className="mb-2 inline-block rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700">
-            🚨 위험 - 병원 방문 권장
-          </span>
-        );
-      case "medium":
-        return (
-          <span className="mb-2 inline-block rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-700">
-            ⚠️ 주의 - 경과 관찰 필요
-          </span>
-        );
-      case "low":
-        return (
-          <span className="mb-2 inline-block rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
-            ✅ 안심 - 일반적인 증상
-          </span>
-        );
-      default:
-        return null;
-    }
-  };
-
   return (
     <div className="flex flex-1 flex-col">
       {/* Chat Header */}
@@ -246,6 +247,7 @@ export default function ChatInterface({ petProfile, onBack, onSaveChat, initialM
           <button
             onClick={onBack}
             className="rounded-full p-2 text-gray-500 hover:bg-gray-100 transition-colors"
+            aria-label="상담 화면 닫기"
           >
             ←
           </button>
@@ -302,6 +304,7 @@ export default function ChatInterface({ petProfile, onBack, onSaveChat, initialM
                         ? "bg-red-500 hover:bg-red-600"
                         : "bg-yellow-500 hover:bg-yellow-600"
                     }`}
+                    aria-label="가까운 동물병원 검색하기"
                   >
                     🏥 가까운 동물병원 찾기
                   </button>
@@ -346,6 +349,7 @@ export default function ChatInterface({ petProfile, onBack, onSaveChat, initialM
                 <button
                   onClick={onBack}
                   className="rounded-full bg-gray-200 px-6 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-300"
+                  aria-label="홈 화면으로 돌아가기"
                 >
                   홈으로
                 </button>
@@ -369,6 +373,7 @@ export default function ChatInterface({ petProfile, onBack, onSaveChat, initialM
                   type="button"
                   onClick={handleRemoveImage}
                   className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600"
+                  aria-label="선택한 이미지 제거"
                 >
                   ✕
                 </button>
@@ -400,6 +405,7 @@ export default function ChatInterface({ petProfile, onBack, onSaveChat, initialM
                     : "bg-gray-100 text-gray-400"
                 }`}
                 title={isPremiumPlus ? "이미지 첨부" : "프리미엄+ 전용 기능"}
+                aria-label={isPremiumPlus ? "이미지 첨부하기" : "프리미엄+ 전용 기능"}
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -419,6 +425,7 @@ export default function ChatInterface({ petProfile, onBack, onSaveChat, initialM
                 type="submit"
                 disabled={isLoading || !input.trim()}
                 className="rounded-full bg-blue-500 px-6 py-3 font-medium text-white transition-colors hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                aria-label="메시지 전송"
               >
                 전송
               </button>

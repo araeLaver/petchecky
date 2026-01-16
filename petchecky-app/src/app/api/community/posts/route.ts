@@ -1,10 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCommunityPosts, createCommunityPost } from '@/lib/supabase';
 import { authenticateRequest } from '@/lib/auth';
+import {
+  checkRateLimit,
+  getClientIdentifier,
+  RATE_LIMITS,
+} from '@/lib/rateLimit';
+import { sanitizeTitle, sanitizeContent, anonymizeEmail } from '@/lib/sanitize';
+
+// Rate Limit 응답 헤더 생성
+function createRateLimitHeaders(remaining: number, resetIn: number) {
+  return {
+    'X-RateLimit-Remaining': String(remaining),
+    'X-RateLimit-Reset': String(Math.ceil(resetIn / 1000)),
+  };
+}
 
 // GET: 게시글 목록 조회
 export async function GET(request: NextRequest) {
   try {
+    // Rate Limiting (IP 기반)
+    const identifier = getClientIdentifier(request);
+    const { allowed, remaining, resetIn } = checkRateLimit(
+      identifier,
+      RATE_LIMITS.READS_PER_MINUTE,
+      RATE_LIMITS.READS_WINDOW_MS
+    );
+
+    if (!allowed) {
+      return NextResponse.json(
+        { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
+        {
+          status: 429,
+          headers: createRateLimitHeaders(remaining, resetIn),
+        }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category') || 'all';
     const limit = parseInt(searchParams.get('limit') || '20');
@@ -12,7 +44,10 @@ export async function GET(request: NextRequest) {
 
     const posts = await getCommunityPosts({ category, limit, offset });
 
-    return NextResponse.json({ posts });
+    return NextResponse.json(
+      { posts },
+      { headers: createRateLimitHeaders(remaining, resetIn) }
+    );
   } catch (error) {
     console.error('Error fetching posts:', error);
     return NextResponse.json(
@@ -36,6 +71,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Rate Limiting (사용자 기반)
+    const identifier = getClientIdentifier(request, user.id);
+    const { allowed, remaining, resetIn } = checkRateLimit(
+      identifier,
+      RATE_LIMITS.POSTS_PER_MINUTE,
+      RATE_LIMITS.POSTS_WINDOW_MS
+    );
+
+    if (!allowed) {
+      return NextResponse.json(
+        { error: '게시글 작성이 너무 빈번합니다. 잠시 후 다시 시도해주세요.' },
+        {
+          status: 429,
+          headers: createRateLimitHeaders(remaining, resetIn),
+        }
+      );
+    }
+
     const body = await request.json();
     const { title, content, category, pet_species } = body;
 
@@ -54,13 +107,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // XSS 방지: 입력값 정제
+    const sanitizedTitle = sanitizeTitle(title);
+    const sanitizedContent = sanitizeContent(content);
+
+    if (!sanitizedTitle || !sanitizedContent) {
+      return NextResponse.json(
+        { error: '제목 또는 내용이 유효하지 않습니다' },
+        { status: 400 }
+      );
+    }
+
     const post = await createCommunityPost({
       user_id: user.id,
-      title: title.trim(),
-      content: content.trim(),
+      title: sanitizedTitle,
+      content: sanitizedContent,
       category,
       pet_species: pet_species || null,
-      author_name: user.email?.split('@')[0] || '익명'
+      author_name: anonymizeEmail(user.email || '')
     });
 
     if (!post) {
@@ -70,7 +134,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ post });
+    return NextResponse.json(
+      { post },
+      { headers: createRateLimitHeaders(remaining, resetIn) }
+    );
   } catch (error) {
     console.error('Error creating post:', error);
     return NextResponse.json(

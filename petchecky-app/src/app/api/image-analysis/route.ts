@@ -3,6 +3,7 @@ import { authenticateRequest, sanitizeUserInput } from "@/lib/auth";
 import { API_CONFIG, FILE_LIMITS, LIMITS, Language } from "@/lib/constants";
 import { getErrorMessage } from "@/lib/errors";
 import { analyzeSeverity } from "@/lib/severity";
+import { convertToWebP, shouldConvertToWebP } from "@/lib/imageUtils";
 
 interface ImageAnalysisRequest {
   image: {
@@ -162,6 +163,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // WebP 변환으로 이미지 최적화 (파일 크기 감소)
+    let optimizedImage = { data: image.data, mimeType: image.mimeType };
+    if (shouldConvertToWebP(image.mimeType)) {
+      try {
+        const converted = await convertToWebP(image);
+        optimizedImage = { data: converted.data, mimeType: converted.mimeType };
+        console.log(`Image optimized: ${converted.originalSize} → ${converted.convertedSize} bytes (${converted.compressionRatio}% reduction)`);
+      } catch (conversionError) {
+        // 변환 실패 시 원본 이미지 사용
+        console.warn("WebP conversion failed, using original:", getErrorMessage(conversionError));
+      }
+    }
+
     // Check API key
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -209,8 +223,8 @@ export async function POST(request: NextRequest) {
               parts: [
                 {
                   inline_data: {
-                    mime_type: image.mimeType,
-                    data: image.data,
+                    mime_type: optimizedImage.mimeType,
+                    data: optimizedImage.data,
                   },
                 },
                 { text: fullPrompt },

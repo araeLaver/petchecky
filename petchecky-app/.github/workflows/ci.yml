@@ -32,6 +32,35 @@ jobs:
         working-directory: petchecky-app
         run: npm run lint
 
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: petchecky-app/package-lock.json
+
+      - name: Install dependencies
+        working-directory: petchecky-app
+        run: npm ci
+
+      - name: Run npm audit
+        working-directory: petchecky-app
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+      - name: Check for known vulnerabilities
+        working-directory: petchecky-app
+        run: |
+          echo "## Security Audit Results" >> $GITHUB_STEP_SUMMARY
+          npm audit --json 2>/dev/null | jq -r '.metadata.vulnerabilities | to_entries | .[] | select(.value > 0) | "\(.key): \(.value)"' >> $GITHUB_STEP_SUMMARY || echo "No vulnerabilities found" >> $GITHUB_STEP_SUMMARY
+
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -50,9 +79,19 @@ jobs:
         working-directory: petchecky-app
         run: npm ci
 
-      - name: Run tests
+      - name: Run tests with coverage
         working-directory: petchecky-app
-        run: npm test -- --coverage --ci
+        run: npm test -- --coverage --ci --coverageReporters=json-summary --coverageReporters=text
+
+      - name: Check coverage thresholds
+        working-directory: petchecky-app
+        run: |
+          echo "## Test Coverage Summary" >> $GITHUB_STEP_SUMMARY
+          COVERAGE=$(cat coverage/coverage-summary.json | jq -r '.total.lines.pct')
+          echo "Line Coverage: ${COVERAGE}%" >> $GITHUB_STEP_SUMMARY
+          if (( $(echo "$COVERAGE < 50" | bc -l) )); then
+            echo "Coverage below 50% threshold!" >> $GITHUB_STEP_SUMMARY
+          fi
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
@@ -89,6 +128,17 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
+      - name: Check bundle size
+        working-directory: petchecky-app
+        run: |
+          echo "## Bundle Size Report" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          du -sh .next/ >> $GITHUB_STEP_SUMMARY
+          echo '' >> $GITHUB_STEP_SUMMARY
+          echo "Static files:" >> $GITHUB_STEP_SUMMARY
+          find .next/static -name "*.js" -exec du -h {} \; | sort -rh | head -10 >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
@@ -117,3 +167,41 @@ jobs:
       - name: Type check
         working-directory: petchecky-app
         run: npx tsc --noEmit
+
+  bundle-analysis:
+    name: Bundle Analysis
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: petchecky-app/package-lock.json
+
+      - name: Install dependencies
+        working-directory: petchecky-app
+        run: npm ci
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: nextjs-build
+          path: petchecky-app/.next/
+
+      - name: Analyze bundle
+        working-directory: petchecky-app
+        run: |
+          TOTAL_SIZE=$(du -sb .next/ | cut -f1)
+          TOTAL_SIZE_MB=$(echo "scale=2; $TOTAL_SIZE / 1024 / 1024" | bc)
+          echo "Total bundle size: ${TOTAL_SIZE_MB}MB"
+
+          # Warn if bundle is too large (>50MB)
+          if (( $(echo "$TOTAL_SIZE_MB > 50" | bc -l) )); then
+            echo "::warning::Bundle size exceeds 50MB threshold"
+          fi

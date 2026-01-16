@@ -1,18 +1,7 @@
 "use client";
 
-interface ChatRecord {
-  id: string;
-  petName: string;
-  petSpecies: "dog" | "cat";
-  date: string;
-  preview: string;
-  severity?: "low" | "medium" | "high";
-  messages: Array<{
-    role: "user" | "assistant";
-    content: string;
-    severity?: "low" | "medium" | "high";
-  }>;
-}
+import { ChatRecord } from "@/hooks/useChat";
+import { formatRelativeTime } from "@/lib/dateUtils";
 
 interface ChatHistoryProps {
   records: ChatRecord[];
@@ -35,23 +24,6 @@ export default function ChatHistory({ records, onSelect, onDelete, onBack }: Cha
     }
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffTime = now.getTime() - date.getTime();
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) {
-      return "오늘";
-    } else if (diffDays === 1) {
-      return "어제";
-    } else if (diffDays < 7) {
-      return `${diffDays}일 전`;
-    } else {
-      return date.toLocaleDateString("ko-KR", { month: "short", day: "numeric" });
-    }
-  };
-
   return (
     <div className="flex flex-1 flex-col">
       {/* Header */}
@@ -60,6 +32,7 @@ export default function ChatHistory({ records, onSelect, onDelete, onBack }: Cha
           <button
             onClick={onBack}
             className="rounded-full p-2 text-gray-500 hover:bg-gray-100 transition-colors"
+            aria-label="상담 기록 닫기"
           >
             ←
           </button>
@@ -87,12 +60,13 @@ export default function ChatHistory({ records, onSelect, onDelete, onBack }: Cha
                   <button
                     onClick={() => onSelect(record)}
                     className="flex-1 text-left"
+                    aria-label={`${record.petName}의 상담 기록 보기: ${record.preview.substring(0, 30)}...`}
                   >
                     <div className="mb-2 flex items-center gap-2">
                       <span className="text-lg">{record.petSpecies === "dog" ? "🐕" : "🐈"}</span>
                       <span className="font-medium text-gray-800">{record.petName}</span>
                       {getSeverityBadge(record.severity)}
-                      <span className="text-xs text-gray-400">{formatDate(record.date)}</span>
+                      <span className="text-xs text-gray-400">{formatRelativeTime(record.date)}</span>
                     </div>
                     <p className="text-sm text-gray-600 line-clamp-2">{record.preview}</p>
                   </button>
@@ -104,6 +78,7 @@ export default function ChatHistory({ records, onSelect, onDelete, onBack }: Cha
                       }
                     }}
                     className="shrink-0 rounded-full p-2 text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+                    aria-label={`${record.petName}의 상담 기록 삭제`}
                   >
                     🗑️
                   </button>
@@ -117,4 +92,4 @@ export default function ChatHistory({ records, onSelect, onDelete, onBack }: Cha
   );
 }
 
-export type { ChatRecord };
+export type { ChatRecord } from "@/hooks/useChat";

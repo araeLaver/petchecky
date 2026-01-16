@@ -1,6 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getComments, createComment, deleteComment, getCommunityPost } from '@/lib/supabase';
 import { authenticateRequest } from '@/lib/auth';
+import {
+  checkRateLimit,
+  getClientIdentifier,
+  RATE_LIMITS,
+} from '@/lib/rateLimit';
+import { sanitizeContent, anonymizeEmail } from '@/lib/sanitize';
+
+// Rate Limit 응답 헤더 생성
+function createRateLimitHeaders(remaining: number, resetIn: number) {
+  return {
+    'X-RateLimit-Remaining': String(remaining),
+    'X-RateLimit-Reset': String(Math.ceil(resetIn / 1000)),
+  };
+}
 
 // GET: 댓글 목록 조회
 export async function GET(
@@ -8,6 +22,24 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Rate Limiting (IP 기반)
+    const identifier = getClientIdentifier(request);
+    const { allowed, remaining, resetIn } = checkRateLimit(
+      identifier,
+      RATE_LIMITS.READS_PER_MINUTE,
+      RATE_LIMITS.READS_WINDOW_MS
+    );
+
+    if (!allowed) {
+      return NextResponse.json(
+        { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
+        {
+          status: 429,
+          headers: createRateLimitHeaders(remaining, resetIn),
+        }
+      );
+    }
+
     const { id } = await params;
 
     // 게시글 존재 확인
@@ -21,7 +53,10 @@ export async function GET(
 
     const comments = await getComments(id);
 
-    return NextResponse.json({ comments });
+    return NextResponse.json(
+      { comments },
+      { headers: createRateLimitHeaders(remaining, resetIn) }
+    );
   } catch (error) {
     console.error('Error fetching comments:', error);
     return NextResponse.json(
@@ -50,6 +85,24 @@ export async function POST(
       );
     }
 
+    // Rate Limiting (사용자 기반)
+    const identifier = getClientIdentifier(request, user.id);
+    const { allowed, remaining, resetIn } = checkRateLimit(
+      identifier,
+      RATE_LIMITS.COMMENTS_PER_MINUTE,
+      RATE_LIMITS.COMMENTS_WINDOW_MS
+    );
+
+    if (!allowed) {
+      return NextResponse.json(
+        { error: '댓글 작성이 너무 빈번합니다. 잠시 후 다시 시도해주세요.' },
+        {
+          status: 429,
+          headers: createRateLimitHeaders(remaining, resetIn),
+        }
+      );
+    }
+
     // 게시글 존재 확인
     const post = await getCommunityPost(id);
     if (!post) {
@@ -69,11 +122,21 @@ export async function POST(
       );
     }
 
+    // XSS 방지: 입력값 정제
+    const sanitizedContent = sanitizeContent(content, 1000);
+
+    if (!sanitizedContent) {
+      return NextResponse.json(
+        { error: '댓글 내용이 유효하지 않습니다' },
+        { status: 400 }
+      );
+    }
+
     const comment = await createComment({
       post_id: id,
       user_id: user.id,
-      content: content.trim(),
-      author_name: user.email?.split('@')[0] || '익명',
+      content: sanitizedContent,
+      author_name: anonymizeEmail(user.email || ''),
       parent_id: parent_id || undefined
     });
 
@@ -84,7 +147,10 @@ export async function POST(
       );
     }
 
-    return NextResponse.json({ comment });
+    return NextResponse.json(
+      { comment },
+      { headers: createRateLimitHeaders(remaining, resetIn) }
+    );
   } catch (error) {
     console.error('Error creating comment:', error);
     return NextResponse.json(

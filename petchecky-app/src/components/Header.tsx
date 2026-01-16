@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { PetProfile } from "@/app/page";
 import { useAuth } from "@/contexts/AuthContext";
@@ -41,15 +41,35 @@ export default function Header({
   const menuRef = useRef<HTMLDivElement>(null);
 
   // 외부 클릭 시 메뉴 닫기
+  const handleClickOutside = useCallback((event: MouseEvent) => {
+    if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+      setShowPetMenu(false);
+    }
+  }, []);
+
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setShowPetMenu(false);
-      }
-    };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [handleClickOutside]);
+
+  const handlePetMenuToggle = useCallback(() => {
+    setShowPetMenu(prev => !prev);
   }, []);
+
+  const handlePetSelect = useCallback((petId: string) => {
+    onSelectPet(petId);
+    setShowPetMenu(false);
+  }, [onSelectPet]);
+
+  const handlePetEdit = useCallback((pet: PetProfile) => {
+    onEditPet(pet);
+    setShowPetMenu(false);
+  }, [onEditPet]);
+
+  const handleAddPet = useCallback(() => {
+    onAddPet();
+    setShowPetMenu(false);
+  }, [onAddPet]);
 
   return (
     <header className="sticky top-0 z-10 border-b border-gray-100 bg-white/80 backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80">
@@ -57,6 +77,7 @@ export default function Header({
         <button
           onClick={onLogoClick}
           className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+          aria-label="펫체키 홈으로 이동"
         >
           <span className="text-2xl">🐾</span>
           <span className="text-xl font-bold text-gray-800 dark:text-gray-100">{t.common.appName}</span>
@@ -66,8 +87,11 @@ export default function Header({
           {/* 펫 선택 드롭다운 */}
           <div className="relative" ref={menuRef}>
             <button
-              onClick={() => setShowPetMenu(!showPetMenu)}
+              onClick={handlePetMenuToggle}
               className="flex items-center gap-2 rounded-full bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+              aria-label={selectedPet ? `${selectedPet.name} 선택됨, 펫 목록 열기` : "펫 등록하기"}
+              aria-expanded={showPetMenu}
+              aria-haspopup="menu"
             >
               {selectedPet ? (
                 <>
@@ -105,11 +129,9 @@ export default function Header({
                       }`}
                     >
                       <button
-                        onClick={() => {
-                          if (pet.id) onSelectPet(pet.id);
-                          setShowPetMenu(false);
-                        }}
+                        onClick={() => pet.id && handlePetSelect(pet.id)}
                         className="flex items-center gap-2 flex-1"
+                        aria-label={`${pet.name} 선택`}
                       >
                         <span className="text-lg">{pet.species === "dog" ? "🐕" : "🐈"}</span>
                         <div className="text-left">
@@ -125,11 +147,11 @@ export default function Header({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          onEditPet(pet);
-                          setShowPetMenu(false);
+                          handlePetEdit(pet);
                         }}
                         className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
                         title="수정"
+                        aria-label={`${pet.name} 정보 수정`}
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -143,11 +165,9 @@ export default function Header({
 
                   {/* 펫 추가 버튼 */}
                   <button
-                    onClick={() => {
-                      onAddPet();
-                      setShowPetMenu(false);
-                    }}
+                    onClick={handleAddPet}
                     className="flex items-center gap-2 w-full px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/30"
+                    aria-label="새 펫 추가하기"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -169,6 +189,7 @@ export default function Header({
                       onClick={onNotificationClick}
                       className="rounded-full p-2 text-gray-500 hover:bg-gray-100 transition-colors"
                       title="알림 설정"
+                      aria-label="알림 설정 열기"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
@@ -215,6 +236,7 @@ export default function Header({
                   <button
                     onClick={() => signOut()}
                     className="rounded-lg bg-gray-200 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                    aria-label="로그아웃"
                   >
                     {t.nav.settings === "설정" ? "로그아웃" : "Logout"}
                   </button>
@@ -226,6 +248,7 @@ export default function Header({
                   <button
                     onClick={onLoginClick}
                     className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-600"
+                    aria-label="로그인"
                   >
                     {t.nav.settings === "설정" ? "로그인" : "Login"}
                   </button>

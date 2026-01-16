@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { safeJsonParse } from "@/lib/safeJson";
 
 export default function OfflineIndicator() {
   const { t } = useLanguage();
@@ -16,12 +17,8 @@ export default function OfflineIndicator() {
     // Check for pending sync items
     const checkPendingSync = () => {
       const pendingItems = localStorage.getItem("petchecky_pending_sync");
-      if (pendingItems) {
-        const items = JSON.parse(pendingItems);
-        setPendingSync(items.length);
-      } else {
-        setPendingSync(0);
-      }
+      const items = safeJsonParse<unknown[]>(pendingItems, []);
+      setPendingSync(items.length);
     };
 
     checkPendingSync();
@@ -57,7 +54,7 @@ export default function OfflineIndicator() {
     const pendingItems = localStorage.getItem("petchecky_pending_sync");
     if (!pendingItems) return;
 
-    const items = JSON.parse(pendingItems);
+    const items = safeJsonParse<unknown[]>(pendingItems, []);
     if (items.length === 0) return;
 
     // In a real app, this would sync to a backend
@@ -125,7 +122,7 @@ export default function OfflineIndicator() {
 // Utility function to add items to pending sync queue
 export function addToPendingSync(type: string, data: Record<string, unknown>) {
   const pendingItems = localStorage.getItem("petchecky_pending_sync");
-  const items = pendingItems ? JSON.parse(pendingItems) : [];
+  const items = safeJsonParse<unknown[]>(pendingItems, []);
 
   items.push({
     id: Date.now().toString(),

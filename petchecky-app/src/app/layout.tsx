@@ -2,14 +2,18 @@ import type { Metadata, Viewport } from "next";
 import { Noto_Sans_KR } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
+import QueryProvider from "@/providers/QueryProvider";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import { PushNotificationProvider } from "@/contexts/PushNotificationContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { ToastProvider } from "@/contexts/ToastContext";
 import OfflineIndicator from "@/components/OfflineIndicator";
+import ToastContainer from "@/components/Toast";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import SkipNavigation from "@/components/SkipNavigation";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 const notoSansKr = Noto_Sans_KR({
   variable: "--font-noto-sans-kr",
@@ -74,22 +78,29 @@ export default function RootLayout({
         />
       </head>
       <body className={`${notoSansKr.variable} font-sans antialiased`}>
-        <ThemeProvider>
-          <LanguageProvider>
-            <AuthProvider>
-              <SubscriptionProvider>
-                <PushNotificationProvider>
-                  <SkipNavigation />
-                  <ServiceWorkerRegistration />
-                  <OfflineIndicator />
-                  <div id="main-content">
-                    {children}
-                  </div>
-                </PushNotificationProvider>
-              </SubscriptionProvider>
-            </AuthProvider>
-          </LanguageProvider>
-        </ThemeProvider>
+        <QueryProvider>
+          <ThemeProvider>
+            <LanguageProvider>
+              <AuthProvider>
+                <SubscriptionProvider>
+                  <PushNotificationProvider>
+                    <ToastProvider>
+                      <SkipNavigation />
+                      <ServiceWorkerRegistration />
+                      <OfflineIndicator />
+                      <ToastContainer />
+                      <ErrorBoundary>
+                        <div id="main-content">
+                          {children}
+                        </div>
+                      </ErrorBoundary>
+                    </ToastProvider>
+                  </PushNotificationProvider>
+                </SubscriptionProvider>
+              </AuthProvider>
+            </LanguageProvider>
+          </ThemeProvider>
+        </QueryProvider>
       </body>
     </html>
   );

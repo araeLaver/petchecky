@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { PetProfile } from "@/app/page";
 import { ChatRecord } from "./ChatHistory";
+import { formatFullDate } from "@/lib/dateUtils";
 
 interface HealthReportProps {
   pet: PetProfile;
@@ -124,15 +125,6 @@ export default function HealthReport({ pet, records, onClose }: HealthReportProp
     }
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("ko-KR", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
-
   const getSeverityLabel = (severity?: string) => {
     switch (severity) {
       case "high": return { text: "위험", color: "text-red-600", bg: "bg-red-100" };
@@ -153,6 +145,7 @@ export default function HealthReport({ pet, records, onClose }: HealthReportProp
               onClick={generatePDF}
               disabled={isGenerating || petRecords.length === 0}
               className="flex items-center gap-2 rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+              aria-label="건강 리포트 PDF로 다운로드"
             >
               {isGenerating ? (
                 <>
@@ -171,6 +164,7 @@ export default function HealthReport({ pet, records, onClose }: HealthReportProp
             <button
               onClick={onClose}
               className="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              aria-label="건강 리포트 닫기"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -305,7 +299,7 @@ export default function HealthReport({ pet, records, onClose }: HealthReportProp
                         >
                           <div className="flex items-start justify-between mb-2">
                             <span className="text-xs text-gray-500">
-                              {formatDate(record.date)}
+                              {formatFullDate(record.date)}
                             </span>
                             <span
                               className={`px-2 py-0.5 rounded-full text-xs font-medium ${severity.bg} ${severity.color}`}

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { CommunityPost } from "@/lib/supabase";
+import { formatRelativeTime } from "@/lib/dateUtils";
 
 const CATEGORIES = [
   { id: "all", label: "전체", emoji: "#" },
@@ -43,20 +44,6 @@ export default function CommunityPage() {
     fetchPosts();
   }, [fetchPosts]);
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-
-    if (minutes < 60) return `${minutes}분 전`;
-    if (hours < 24) return `${hours}시간 전`;
-    if (days < 7) return `${days}일 전`;
-    return date.toLocaleDateString("ko-KR");
-  };
-
   const getCategoryInfo = (category: string) => {
     return CATEGORIES.find((c) => c.id === category) || CATEGORIES[0];
   };
@@ -90,6 +77,8 @@ export default function CommunityPage() {
                   ? "bg-blue-500 text-white"
                   : "bg-white text-gray-600 border border-gray-200 hover:border-gray-300"
               }`}
+              aria-label={`${category.label} 카테고리 선택`}
+              aria-pressed={selectedCategory === category.id}
             >
               <span>{category.emoji}</span>
               <span>{category.label}</span>
@@ -102,6 +91,7 @@ export default function CommunityPage() {
           <button
             onClick={() => setShowWriteModal(true)}
             className="w-full mb-4 rounded-xl bg-white border-2 border-dashed border-gray-300 p-4 text-gray-500 hover:border-blue-400 hover:text-blue-500 transition-colors"
+            aria-label="새 게시글 작성하기"
           >
             + 새 글 작성하기
           </button>
@@ -121,6 +111,7 @@ export default function CommunityPage() {
               <button
                 onClick={() => setShowWriteModal(true)}
                 className="mt-4 rounded-full bg-blue-500 px-6 py-2 text-sm font-medium text-white"
+                aria-label="첫 게시글 작성하기"
               >
                 첫 글 작성하기
               </button>
@@ -168,7 +159,7 @@ export default function CommunityPage() {
                       {/* 메타 정보 */}
                       <div className="flex items-center gap-4 text-xs text-gray-400">
                         <span>{post.author_name}</span>
-                        <span>{formatDate(post.created_at)}</span>
+                        <span>{formatRelativeTime(post.created_at)}</span>
                         <span className="flex items-center gap-1">
                           ♥ {post.likes_count}
                         </span>
@@ -305,6 +296,7 @@ function WritePostModal({
           <button
             onClick={onClose}
             className="rounded-full p-2 text-gray-400 hover:bg-gray-100"
+            aria-label="글쓰기 창 닫기"
           >
             X
           </button>
@@ -333,6 +325,8 @@ function WritePostModal({
                       ? "bg-blue-500 text-white"
                       : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                   }`}
+                  aria-label={`${category.label} 카테고리 선택`}
+                  aria-pressed={form.category === category.id}
                 >
                   {category.emoji} {category.label}
                 </button>
@@ -354,6 +348,8 @@ function WritePostModal({
                     ? "border-blue-500 bg-blue-50 text-blue-700"
                     : "border-gray-200 text-gray-600 hover:border-gray-300"
                 }`}
+                aria-label="강아지 선택"
+                aria-pressed={form.pet_species === "dog"}
               >
                 🐕 강아지
               </button>
@@ -365,6 +361,8 @@ function WritePostModal({
                     ? "border-blue-500 bg-blue-50 text-blue-700"
                     : "border-gray-200 text-gray-600 hover:border-gray-300"
                 }`}
+                aria-label="고양이 선택"
+                aria-pressed={form.pet_species === "cat"}
               >
                 🐈 고양이
               </button>
@@ -412,6 +410,7 @@ function WritePostModal({
               type="button"
               onClick={onClose}
               className="flex-1 rounded-lg border border-gray-300 py-3 font-medium text-gray-700 hover:bg-gray-50"
+              aria-label="게시글 작성 취소"
             >
               취소
             </button>
@@ -419,6 +418,7 @@ function WritePostModal({
               type="submit"
               disabled={isSubmitting || !form.title.trim() || !form.content.trim()}
               className="flex-1 rounded-lg bg-blue-500 py-3 font-medium text-white hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+              aria-label="게시글 등록"
             >
               {isSubmitting ? "등록 중..." : "등록하기"}
             </button>

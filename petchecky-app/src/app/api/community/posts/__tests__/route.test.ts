@@ -19,6 +19,18 @@ jest.mock('@/lib/auth', () => ({
   authenticateRequest: jest.fn(),
 }));
 
+// Mock rate limiting to always allow requests in tests
+jest.mock('@/lib/rateLimit', () => ({
+  checkRateLimit: jest.fn().mockReturnValue({ allowed: true, remaining: 10, resetTime: Date.now() + 60000 }),
+  getClientIdentifier: jest.fn().mockReturnValue('test-client'),
+  RATE_LIMITS: {
+    POSTS_READ: { maxRequests: 30, windowMs: 60000 },
+    POSTS_WRITE: { maxRequests: 10, windowMs: 60000 },
+    COMMENTS_WRITE: { maxRequests: 20, windowMs: 60000 },
+    LIKES: { maxRequests: 30, windowMs: 60000 },
+  },
+}));
+
 import { getCommunityPosts, createCommunityPost } from '@/lib/supabase';
 import { authenticateRequest } from '@/lib/auth';
 
@@ -176,7 +188,7 @@ describe('Community Posts API', () => {
         content: 'Post content',
         category: 'question',
         pet_species: 'dog',
-        author_name: 'test',
+        author_name: 'tes***',
       });
     });
 
@@ -372,7 +384,7 @@ describe('Community Posts API', () => {
       expect(data.error).toBeDefined();
     });
 
-    it('should use email prefix as author_name', async () => {
+    it('should use anonymized email as author_name', async () => {
       mockAuthenticateRequest.mockResolvedValue({
         ...authenticatedUser,
         user: { id: 'user-1', email: 'myname@example.com' },
@@ -389,7 +401,7 @@ describe('Community Posts API', () => {
 
       expect(mockCreateCommunityPost).toHaveBeenCalledWith(
         expect.objectContaining({
-          author_name: 'myname',
+          author_name: 'myn***',
         })
       );
     });
