@@ -169,10 +169,8 @@ export async function POST(request: NextRequest) {
       try {
         const converted = await convertToWebP(image);
         optimizedImage = { data: converted.data, mimeType: converted.mimeType };
-        console.log(`Image optimized: ${converted.originalSize} → ${converted.convertedSize} bytes (${converted.compressionRatio}% reduction)`);
-      } catch (conversionError) {
+      } catch {
         // 변환 실패 시 원본 이미지 사용
-        console.warn("WebP conversion failed, using original:", getErrorMessage(conversionError));
       }
     }
 

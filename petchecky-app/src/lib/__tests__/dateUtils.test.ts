@@ -22,11 +22,11 @@ describe('dateUtils', () => {
 
   beforeAll(() => {
     global.Date = class extends RealDate {
-      constructor(...args: any[]) {
+      constructor(...args: ConstructorParameters<typeof Date>) {
+        super();
         if (args.length === 0) {
           return new RealDate(mockNow);
         }
-        // @ts-ignore
         return new RealDate(...args);
       }
       static now() {

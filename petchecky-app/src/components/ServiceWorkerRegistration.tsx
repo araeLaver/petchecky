@@ -2,6 +2,8 @@
 
 import { useEffect } from "react";
 
+const isDevelopment = process.env.NODE_ENV === "development";
+
 export default function ServiceWorkerRegistration() {
   useEffect(() => {
     if (typeof window !== "undefined" && "serviceWorker" in navigator) {
@@ -9,7 +11,9 @@ export default function ServiceWorkerRegistration() {
       navigator.serviceWorker
         .register("/sw.js")
         .then((registration) => {
-          console.log("PetChecky: Service Worker registered with scope:", registration.scope);
+          if (isDevelopment) {
+            console.log("PetChecky: Service Worker registered with scope:", registration.scope);
+          }
 
           // Check for updates
           registration.addEventListener("updatefound", () => {
@@ -17,22 +21,27 @@ export default function ServiceWorkerRegistration() {
             if (newWorker) {
               newWorker.addEventListener("statechange", () => {
                 if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
-                  // New content available
-                  console.log("PetChecky: New content available, reload to update");
-                  // Could show a toast/notification to the user here
+                  // New content available - could show a toast/notification to the user here
+                  if (isDevelopment) {
+                    console.log("PetChecky: New content available, reload to update");
+                  }
                 }
               });
             }
           });
         })
         .catch((error) => {
-          console.error("PetChecky: Service Worker registration failed:", error);
+          if (isDevelopment) {
+            console.error("PetChecky: Service Worker registration failed:", error);
+          }
         });
 
       // Listen for messages from service worker
       navigator.serviceWorker.addEventListener("message", (event) => {
         if (event.data && event.data.type === "SYNC_COMPLETE") {
-          console.log("PetChecky: Background sync completed");
+          if (isDevelopment) {
+            console.log("PetChecky: Background sync completed");
+          }
           // Refresh data or show notification
         }
       });

@@ -16,6 +16,7 @@ export const ko = {
     next: "다음",
     submit: "제출",
     send: "전송",
+    comingSoon: "준비 중",
   },
 
   // Navigation

@@ -304,10 +304,8 @@ export async function migratePhotosFromLocalStorage(petId: string): Promise<bool
 
     // localStorage에서 삭제
     localStorage.removeItem(key);
-    console.log(`Migrated ${photos.length} photos for pet ${petId}`);
     return true;
-  } catch (error) {
-    console.error("Photo migration failed:", error);
+  } catch {
     return false;
   }
 }

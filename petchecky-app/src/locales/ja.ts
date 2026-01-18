@@ -18,6 +18,7 @@ export const ja: TranslationKeys = {
     next: "次へ",
     submit: "送信",
     send: "送信",
+    comingSoon: "準備中",
   },
 
   // Navigation

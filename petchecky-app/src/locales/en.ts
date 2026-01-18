@@ -18,6 +18,7 @@ export const en: TranslationKeys = {
     next: "Next",
     submit: "Submit",
     send: "Send",
+    comingSoon: "Coming Soon",
   },
 
   // Navigation

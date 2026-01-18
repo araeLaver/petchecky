@@ -120,6 +120,7 @@ export default function LandingPage({
       title: t.features.messages.title,
       description: t.features.messages.description,
       link: "/messages",
+      comingSoon: true,
     },
     {
       icon: "🍽️",
@@ -132,6 +133,7 @@ export default function LandingPage({
       title: t.features.insurance.title,
       description: t.features.insurance.description,
       link: "/insurance",
+      comingSoon: true,
     },
     {
       icon: "🔔",
@@ -174,6 +176,7 @@ export default function LandingPage({
       title: t.features.petSitter.title,
       description: t.features.petSitter.description,
       link: "/pet-sitter",
+      comingSoon: true,
     },
     {
       icon: "💊",
@@ -321,11 +324,18 @@ export default function LandingPage({
                 <>
                   <div className="flex items-start justify-between mb-3">
                     <span className="text-3xl">{feature.icon}</span>
-                    {"badge" in feature && feature.badge && (
-                      <span className="inline-block rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-2 py-0.5 text-xs font-semibold text-white">
-                        {feature.badge}
-                      </span>
-                    )}
+                    <div className="flex gap-1">
+                      {"comingSoon" in feature && feature.comingSoon && (
+                        <span className="inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                          {t.common.comingSoon}
+                        </span>
+                      )}
+                      {"badge" in feature && feature.badge && (
+                        <span className="inline-block rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-2 py-0.5 text-xs font-semibold text-white">
+                          {feature.badge}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <h3 className="mb-2 font-semibold text-gray-800 dark:text-gray-100">{feature.title}</h3>
                   <p className="text-sm text-gray-500 leading-relaxed dark:text-gray-400">{feature.description}</p>

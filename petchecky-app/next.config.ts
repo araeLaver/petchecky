@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import bundleAnalyzer from "@next/bundle-analyzer";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === "true",
@@ -95,4 +96,15 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withBundleAnalyzer(nextConfig);
+// Sentry 설정
+const sentryWebpackPluginOptions = {
+  // Sentry 소스맵 업로드 비활성화 (필요 시 활성화)
+  silent: true,
+  // 빌드 에러 시 Sentry 에러 무시
+  hideSourceMaps: true,
+};
+
+export default withSentryConfig(
+  withBundleAnalyzer(nextConfig),
+  sentryWebpackPluginOptions
+);

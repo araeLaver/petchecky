@@ -14,6 +14,10 @@ import ToastContainer from "@/components/Toast";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import SkipNavigation from "@/components/SkipNavigation";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { checkEnvVariables } from "@/lib/env";
+
+// 서버 사이드에서 환경변수 검증
+checkEnvVariables();
 
 const notoSansKr = Noto_Sans_KR({
   variable: "--font-noto-sans-kr",
