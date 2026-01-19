@@ -8,44 +8,24 @@ import {
   getUsage,
   ChatRecord as DBChatRecord,
 } from "@/lib/supabase";
-import { PetProfile } from "./usePets";
+import {
+  STORAGE_KEYS,
+  getStorageItem,
+  setStorageItem,
+} from "./useLocalStorage";
+import { LIMITS } from "@/lib/constants";
+import type { PetProfile, ChatRecord, ChatMessage, Message } from "@/types/chat";
 
-export interface ChatMessage {
-  role: "user" | "assistant";
-  content: string;
-  severity?: "low" | "medium" | "high";
-}
+// 타입 re-export (하위 호환성)
+export type { ChatRecord, ChatMessage } from "@/types/chat";
 
-export interface ChatRecord {
-  id: string;
-  petName: string;
-  petSpecies: "dog" | "cat";
-  date: string;
-  preview: string;
-  severity?: "low" | "medium" | "high";
-  messages: ChatMessage[];
-}
-
-const HISTORY_KEY = "petchecky_chat_history";
-
-// LocalStorage 헬퍼 함수
+// LocalStorage 헬퍼 함수 (공통 모듈 사용)
 function getLocalHistory(): ChatRecord[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const saved = localStorage.getItem(HISTORY_KEY);
-    if (saved) return JSON.parse(saved);
-  } catch (e) {
-    console.error("Failed to load chat history:", e);
-  }
-  return [];
+  return getStorageItem<ChatRecord[]>(STORAGE_KEYS.CHAT_HISTORY, []);
 }
 
-function saveLocalHistory(history: ChatRecord[]) {
-  try {
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
-  } catch (e) {
-    console.error("Failed to save chat history:", e);
-  }
+function saveLocalHistory(history: ChatRecord[]): void {
+  setStorageItem(STORAGE_KEYS.CHAT_HISTORY, history);
 }
 
 // DB -> UI 변환 함수
@@ -59,13 +39,6 @@ function dbRecordToLocal(record: DBChatRecord): ChatRecord {
     severity: record.severity || undefined,
     messages: record.messages,
   };
-}
-
-interface Message {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  severity?: "low" | "medium" | "high";
 }
 
 interface UseChatOptions {
@@ -142,7 +115,7 @@ export function useChat({ userId, authLoading = false }: UseChatOptions): UseCha
       });
 
       if (newRecord) {
-        setChatHistory(prev => [dbRecordToLocal(newRecord), ...prev].slice(0, 50));
+        setChatHistory(prev => [dbRecordToLocal(newRecord), ...prev].slice(0, LIMITS.MAX_CHAT_RECORDS));
       }
     } else {
       const newRecord: ChatRecord = {
@@ -160,7 +133,7 @@ export function useChat({ userId, authLoading = false }: UseChatOptions): UseCha
       };
 
       setChatHistory(prev => {
-        const updatedHistory = [newRecord, ...prev].slice(0, 50);
+        const updatedHistory = [newRecord, ...prev].slice(0, LIMITS.MAX_CHAT_RECORDS);
         saveLocalHistory(updatedHistory);
         return updatedHistory;
       });

@@ -6,9 +6,10 @@ import ChatInterface from "@/components/ChatInterface";
 import Header from "@/components/Header";
 import LandingPage from "@/components/LandingPage";
 import { useAuth } from "@/contexts/AuthContext";
-import { usePets, PetProfile } from "@/hooks/usePets";
-import { useChat, ChatRecord } from "@/hooks/useChat";
+import { usePets } from "@/hooks/usePets";
+import { useChat } from "@/hooks/useChat";
 import { useModals } from "@/hooks/useModals";
+import type { PetProfile, ChatRecord, Message } from "@/types/chat";
 
 // 모달 컴포넌트 Dynamic Import (초기 번들 크기 최적화)
 const PetProfileModal = dynamic(() => import("@/components/PetProfileModal"), {
@@ -29,15 +30,7 @@ const ChatHistory = dynamic(() => import("@/components/ChatHistory"), {
 });
 
 // Re-export types for compatibility
-export type { PetProfile } from "@/hooks/usePets";
-export type { ChatRecord } from "@/hooks/useChat";
-
-interface Message {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  severity?: "low" | "medium" | "high";
-}
+export type { PetProfile, ChatRecord, Message } from "@/types/chat";
 
 type ViewType = "landing" | "chat" | "history";
 

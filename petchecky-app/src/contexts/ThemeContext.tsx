@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useMemo, ReactNode } from "react";
 
 type Theme = "light" | "dark" | "system";
 
@@ -65,24 +65,33 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return () => mediaQuery.removeEventListener("change", handleChange);
   }, [theme, mounted]);
 
-  const setTheme = (newTheme: Theme) => {
+  const setTheme = useCallback((newTheme: Theme) => {
     setThemeState(newTheme);
     localStorage.setItem("petchecky_theme", newTheme);
-  };
+  }, []);
+
+  // Context value를 memoize하여 불필요한 리렌더링 방지
+  const value = useMemo(
+    () => ({ theme, resolvedTheme, setTheme }),
+    [theme, resolvedTheme, setTheme]
+  );
 
   // Prevent flash of incorrect theme
+  const placeholderValue = useMemo(
+    () => ({ theme: "system" as Theme, resolvedTheme: "light" as const, setTheme: () => {} }),
+    []
+  );
+
   if (!mounted) {
     return (
-      <ThemeContext.Provider
-        value={{ theme: "system", resolvedTheme: "light", setTheme: () => {} }}
-      >
+      <ThemeContext.Provider value={placeholderValue}>
         {children}
       </ThemeContext.Provider>
     );
   }
 
   return (
-    <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme }}>
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );

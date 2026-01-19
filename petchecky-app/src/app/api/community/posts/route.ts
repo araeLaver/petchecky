@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCommunityPosts, createCommunityPost } from '@/lib/supabase';
 import { authenticateRequest } from '@/lib/auth';
-import {
-  checkRateLimit,
-  getClientIdentifier,
-  RATE_LIMITS,
-} from '@/lib/rateLimit';
+import { checkRateLimit, getClientIdentifier } from '@/lib/rateLimit';
+import { RATE_LIMITS } from '@/lib/constants';
 import { sanitizeTitle, sanitizeContent, anonymizeEmail } from '@/lib/sanitize';
 
 // Rate Limit 응답 헤더 생성

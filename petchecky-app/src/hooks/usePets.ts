@@ -8,63 +8,48 @@ import {
   deletePet,
   Pet,
 } from "@/lib/supabase";
+import {
+  STORAGE_KEYS,
+  getStorageItem,
+  setStorageItem,
+  removeStorageItem,
+} from "./useLocalStorage";
+import type { PetProfile } from "@/types/chat";
 
-export interface PetProfile {
-  id?: string;
-  name: string;
-  species: "dog" | "cat";
-  breed: string;
-  age: number;
-  weight: number;
-}
+// PetProfile 타입 re-export (하위 호환성)
+export type { PetProfile } from "@/types/chat";
 
-const STORAGE_KEY = "petchecky_pets";
-const SELECTED_PET_KEY = "petchecky_selected_pet";
-
-// LocalStorage 헬퍼 함수
+// LocalStorage 헬퍼 함수 (공통 모듈 사용)
 function getLocalPets(): PetProfile[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (!Array.isArray(parsed)) {
-        return [{ ...parsed, id: `local_${Date.now()}` }];
-      }
-      return parsed;
-    }
-  } catch (e) {
-    console.error("Failed to load pets:", e);
+  const saved = getStorageItem<PetProfile | PetProfile[]>(STORAGE_KEYS.PETS, []);
+  if (!Array.isArray(saved)) {
+    return [{ ...saved, id: `local_${Date.now()}` }];
   }
-  return [];
+  return saved;
 }
 
 function getSelectedPetId(): string | null {
   if (typeof window === "undefined") return null;
   try {
-    return localStorage.getItem(SELECTED_PET_KEY);
+    return localStorage.getItem(STORAGE_KEYS.SELECTED_PET);
   } catch {
     return null;
   }
 }
 
-function saveLocalPets(pets: PetProfile[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(pets));
-  } catch (e) {
-    console.error("Failed to save pets:", e);
-  }
+function saveLocalPets(pets: PetProfile[]): void {
+  setStorageItem(STORAGE_KEYS.PETS, pets);
 }
 
-function saveSelectedPetId(id: string | null) {
-  try {
-    if (id) {
-      localStorage.setItem(SELECTED_PET_KEY, id);
-    } else {
-      localStorage.removeItem(SELECTED_PET_KEY);
+function saveSelectedPetId(id: string | null): void {
+  if (id) {
+    try {
+      localStorage.setItem(STORAGE_KEYS.SELECTED_PET, id);
+    } catch (e) {
+      console.error("Failed to save selected pet:", e);
     }
-  } catch (e) {
-    console.error("Failed to save selected pet:", e);
+  } else {
+    removeStorageItem(STORAGE_KEYS.SELECTED_PET);
   }
 }
 

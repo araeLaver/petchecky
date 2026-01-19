@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "./AuthContext";
 import { Subscription, PlanType } from "@/types/subscription";
 
@@ -19,12 +19,10 @@ interface SubscriptionContextType {
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
 
 export function SubscriptionProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const { user, getAccessToken } = useAuth();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const { getAccessToken } = useAuth();
 
   const fetchSubscription = useCallback(async () => {
     if (!user) {
@@ -66,7 +64,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     fetchSubscription();
   }, [fetchSubscription]);
 
-  const cancelSubscription = async (): Promise<boolean> => {
+  const cancelSubscription = useCallback(async (): Promise<boolean> => {
     if (!user) return false;
 
     try {
@@ -97,27 +95,57 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       setError("구독 해지에 실패했습니다.");
       return false;
     }
-  };
+  }, [user, getAccessToken, fetchSubscription]);
 
-  const isPremium = !!subscription && subscription.status === "active";
-  const isPremiumPlus = isPremium && subscription?.plan_type === "premium_plus";
-  const currentPlan: PlanType = isPremiumPlus ? "premium_plus" : isPremium ? "premium" : "free";
-  const vetConsultationsRemaining = subscription?.vet_consultations_remaining || 0;
+  // 파생 값들을 memoize
+  const isPremium = useMemo(
+    () => !!subscription && subscription.status === "active",
+    [subscription]
+  );
+
+  const isPremiumPlus = useMemo(
+    () => isPremium && subscription?.plan_type === "premium_plus",
+    [isPremium, subscription?.plan_type]
+  );
+
+  const currentPlan: PlanType = useMemo(
+    () => isPremiumPlus ? "premium_plus" : isPremium ? "premium" : "free",
+    [isPremiumPlus, isPremium]
+  );
+
+  const vetConsultationsRemaining = useMemo(
+    () => subscription?.vet_consultations_remaining || 0,
+    [subscription?.vet_consultations_remaining]
+  );
+
+  // Context value를 memoize하여 불필요한 리렌더링 방지
+  const value = useMemo(
+    () => ({
+      subscription,
+      isPremium,
+      isPremiumPlus,
+      currentPlan,
+      isLoading,
+      error,
+      refreshSubscription: fetchSubscription,
+      cancelSubscription,
+      vetConsultationsRemaining,
+    }),
+    [
+      subscription,
+      isPremium,
+      isPremiumPlus,
+      currentPlan,
+      isLoading,
+      error,
+      fetchSubscription,
+      cancelSubscription,
+      vetConsultationsRemaining,
+    ]
+  );
 
   return (
-    <SubscriptionContext.Provider
-      value={{
-        subscription,
-        isPremium,
-        isPremiumPlus,
-        currentPlan,
-        isLoading,
-        error,
-        refreshSubscription: fetchSubscription,
-        cancelSubscription,
-        vetConsultationsRemaining,
-      }}
-    >
+    <SubscriptionContext.Provider value={value}>
       {children}
     </SubscriptionContext.Provider>
   );

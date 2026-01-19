@@ -1,32 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUsage, incrementUsage } from "@/lib/supabase";
 import { authenticateRequest, sanitizeUserInput, sanitizePetProfile } from "@/lib/auth";
-import { LIMITS, API_CONFIG } from "@/lib/constants";
-import { ApiErrors, getErrorMessage } from "@/lib/errors";
+import { LIMITS, API_CONFIG, RATE_LIMITS } from "@/lib/constants";
+import { getErrorMessage } from "@/lib/errors";
 import { analyzeCombinedSeverity } from "@/lib/severity";
-
-interface PetProfile {
-  name: string;
-  species: "dog" | "cat";
-  breed: string;
-  age: number;
-  weight: number;
-}
-
-interface Message {
-  role: "user" | "assistant";
-  content: string;
-}
-
-interface ChatRequest {
-  message: string;
-  petProfile: PetProfile;
-  history: Message[];
-  image?: {
-    data: string; // Base64 encoded image
-    mimeType: string; // image/jpeg, image/png, etc.
-  };
-}
+import { validateChatRequest } from "@/lib/validations/chat";
+import { checkRateLimit, getClientIdentifier } from "@/lib/rateLimit";
+import type { PetProfile, ChatMessage } from "@/types/chat";
 
 const SYSTEM_PROMPT = `당신은 반려동물 건강 상담 AI 전문가 "펫체키"입니다.
 
@@ -57,13 +37,49 @@ export async function POST(request: NextRequest) {
       console.warn('Auth warning:', authError);
     }
 
-    const body = await request.json();
-    const { message, petProfile: rawPetProfile, history, image }: ChatRequest = body;
-
     // 서버에서 검증한 인증 정보 사용
     const userId = user?.id;
     const isPremium = subscription.isPremium;
     const isPremiumPlus = subscription.isPremiumPlus;
+
+    // Rate Limiting 체크
+    const clientIdentifier = getClientIdentifier(request, userId);
+    const rateLimit = checkRateLimit(
+      clientIdentifier,
+      RATE_LIMITS.CHAT_PER_MINUTE,
+      RATE_LIMITS.CHAT_WINDOW_MS
+    );
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        {
+          message: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.",
+          severity: "low",
+        },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": Math.ceil(rateLimit.resetIn / 1000).toString(),
+            "X-RateLimit-Remaining": rateLimit.remaining.toString(),
+          },
+        }
+      );
+    }
+
+    // 요청 본문 파싱
+    const body = await request.json();
+
+    // Zod 스키마로 입력 검증
+    const validation = validateChatRequest(body);
+    if (!validation.success || !validation.data) {
+      return NextResponse.json(
+        { message: validation.error || "입력값이 올바르지 않습니다.", severity: "low" },
+        { status: 400 }
+      );
+    }
+
+    const validatedData = validation.data;
+    const { message, petProfile: rawPetProfile, history, image } = validatedData;
 
     // 이미지 분석은 프리미엄+ 전용 (서버에서 검증된 구독 상태 사용)
     if (image && !isPremiumPlus) {
@@ -98,33 +114,11 @@ export async function POST(request: NextRequest) {
     // 펫 프로필 정제 (프롬프트 인젝션 방어)
     const petProfile = sanitizePetProfile(rawPetProfile);
 
-    // 입력 유효성 검사
-    if (!message || typeof message !== "string" || message.trim().length === 0) {
-      return NextResponse.json(
-        { message: "메시지를 입력해주세요.", severity: "low" },
-        { status: 400 }
-      );
-    }
-
-    if (message.length > LIMITS.MESSAGE_MAX_LENGTH) {
-      return NextResponse.json(
-        { message: `메시지가 너무 깁니다. ${LIMITS.MESSAGE_MAX_LENGTH}자 이내로 입력해주세요.`, severity: "low" },
-        { status: 400 }
-      );
-    }
-
-    if (!petProfile || !petProfile.name || !petProfile.species) {
-      return NextResponse.json(
-        { message: "반려동물 정보가 필요합니다. 프로필을 먼저 등록해주세요.", severity: "low" },
-        { status: 400 }
-      );
-    }
-
     // 사용자 메시지 정제 (프롬프트 인젝션 방어)
     const sanitizedMessage = sanitizeUserInput(message);
 
     // 히스토리 메시지 정제
-    const sanitizedHistory = (history || []).slice(-4).map((msg) => ({
+    const sanitizedHistory = (history || []).slice(-4).map((msg: { role: "user" | "assistant"; content: string }) => ({
       role: msg.role,
       content: sanitizeUserInput(msg.content),
     }));
@@ -147,7 +141,7 @@ export async function POST(request: NextRequest) {
 - 체중: ${petProfile.weight}kg`;
 
     const conversationHistory = sanitizedHistory
-      .map((msg) => `${msg.role === "user" ? "보호자" : "펫체키"}: ${msg.content}`)
+      .map((msg: { role: string; content: string }) => `${msg.role === "user" ? "보호자" : "펫체키"}: ${msg.content}`)
       .join("\n");
 
     // 이미지가 있는 경우 추가 안내

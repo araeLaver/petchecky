@@ -96,26 +96,8 @@ export function resetRateLimitFor(identifier: string): void {
   rateLimitStore.delete(identifier);
 }
 
-/**
- * Rate Limit 설정 상수
- */
-export const RATE_LIMITS = {
-  // 커뮤니티 게시글
-  POSTS_PER_MINUTE: 5,
-  POSTS_WINDOW_MS: 60 * 1000, // 1분
-
-  // 커뮤니티 댓글
-  COMMENTS_PER_MINUTE: 10,
-  COMMENTS_WINDOW_MS: 60 * 1000, // 1분
-
-  // 좋아요
-  LIKES_PER_MINUTE: 30,
-  LIKES_WINDOW_MS: 60 * 1000, // 1분
-
-  // GET 요청 (읽기)
-  READS_PER_MINUTE: 60,
-  READS_WINDOW_MS: 60 * 1000, // 1분
-} as const;
+// Rate Limit 상수는 @/lib/constants에서 가져와서 사용
+// import { RATE_LIMITS } from "@/lib/constants";
 
 /**
  * NextRequest에서 클라이언트 IP 추출

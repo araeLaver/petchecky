@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useMemo, ReactNode } from "react";
 
 export type ToastType = "success" | "error" | "info" | "warning";
 
@@ -67,18 +67,22 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     [showToast]
   );
 
+  // Context value를 memoize하여 불필요한 리렌더링 방지
+  const value = useMemo(
+    () => ({
+      toasts,
+      showToast,
+      removeToast,
+      success,
+      error,
+      info,
+      warning,
+    }),
+    [toasts, showToast, removeToast, success, error, info, warning]
+  );
+
   return (
-    <ToastContext.Provider
-      value={{
-        toasts,
-        showToast,
-        removeToast,
-        success,
-        error,
-        info,
-        warning,
-      }}
-    >
+    <ToastContext.Provider value={value}>
       {children}
     </ToastContext.Provider>
   );

@@ -8,6 +8,30 @@ export const LIMITS = {
   DESCRIPTION_MAX_LENGTH: 500,
   MESSAGE_HISTORY_COUNT: 6,
   ANALYSIS_HISTORY_COUNT: 20,
+  MAX_CHAT_RECORDS: 50,
+} as const;
+
+// === Rate Limiting ===
+export const RATE_LIMITS = {
+  // 채팅 API
+  CHAT_PER_MINUTE: 10,
+  CHAT_WINDOW_MS: 60 * 1000, // 1분
+
+  // 커뮤니티 게시글
+  POSTS_PER_MINUTE: 5,
+  POSTS_WINDOW_MS: 60 * 1000, // 1분
+
+  // 커뮤니티 댓글
+  COMMENTS_PER_MINUTE: 10,
+  COMMENTS_WINDOW_MS: 60 * 1000, // 1분
+
+  // 좋아요
+  LIKES_PER_MINUTE: 30,
+  LIKES_WINDOW_MS: 60 * 1000, // 1분
+
+  // GET 요청 (읽기)
+  READS_PER_MINUTE: 60,
+  READS_WINDOW_MS: 60 * 1000, // 1분
 } as const;
 
 // === 파일 업로드 ===
