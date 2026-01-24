@@ -158,7 +158,7 @@ export function validateField<T>(
   value: unknown
 ): string | null {
   try {
-    const partialSchema = z.object({ [field]: (schema as z.ZodObject<any>).shape[field] });
+    const partialSchema = z.object({ [field]: (schema as z.ZodObject<z.ZodRawShape>).shape[field] });
     partialSchema.parse({ [field]: value });
     return null;
   } catch (error) {

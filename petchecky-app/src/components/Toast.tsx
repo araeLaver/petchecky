@@ -58,7 +58,7 @@ interface ToastItemProps {
   onClose: () => void;
 }
 
-function ToastItem({ id, type, message, onClose }: ToastItemProps) {
+function ToastItem({ id: _id, type, message, onClose }: ToastItemProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
   const style = toastStyles[type];

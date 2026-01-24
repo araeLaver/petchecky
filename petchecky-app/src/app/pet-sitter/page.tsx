@@ -100,7 +100,7 @@ export default function PetSitterPage() {
   const { t } = useLanguage();
   const [pets, setPets] = useState<PetProfile[]>([]);
   const [selectedPetId, setSelectedPetId] = useState<string>("");
-  const [sitters, setSitters] = useState<PetSitter[]>(SAMPLE_SITTERS);
+  const [sitters] = useState<PetSitter[]>(SAMPLE_SITTERS);
   const [serviceFilter, setServiceFilter] = useState<ServiceType>("all");
   const [petFilter, setPetFilter] = useState<PetType>("all");
   const [sortBy, setSortBy] = useState<"distance" | "rating" | "price">("distance");

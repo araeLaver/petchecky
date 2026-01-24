@@ -46,10 +46,15 @@ const config: Config = {
   testPathIgnorePatterns: [
     "<rootDir>/node_modules/",
     "<rootDir>/.next/",
+    "<rootDir>/e2e/",
   ],
 
   // 모듈 파일 확장자
   moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json", "node"],
+
+  // 메모리 최적화
+  workerIdleMemoryLimit: "512MB",
+  maxWorkers: "50%",
 };
 
 export default createJestConfig(config);

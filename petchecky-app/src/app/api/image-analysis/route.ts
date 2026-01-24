@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest, sanitizeUserInput } from "@/lib/auth";
-import { API_CONFIG, FILE_LIMITS, LIMITS, Language } from "@/lib/constants";
+import { API_CONFIG, FILE_LIMITS, Language } from "@/lib/constants";
 import { getErrorMessage } from "@/lib/errors";
 import { analyzeSeverity } from "@/lib/severity";
 import { convertToWebP, shouldConvertToWebP } from "@/lib/imageUtils";
@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
   try {
     // 서버 사이드 인증 검증 - 프리미엄+ 구독자만 이미지 분석 가능
     const authHeader = request.headers.get('authorization');
-    const { user, subscription, error: authError } = await authenticateRequest(authHeader);
+    const { subscription } = await authenticateRequest(authHeader);
 
     // 이미지 분석은 프리미엄+ 전용 기능 (서버에서 검증)
     if (!subscription.isPremiumPlus) {

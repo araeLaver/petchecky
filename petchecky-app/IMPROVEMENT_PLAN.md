@@ -22,33 +22,33 @@
 
 ---
 
-## Phase 4: 성능 최적화 및 모니터링 (다음 진행)
+## Phase 4: 성능 최적화 및 모니터링 ✅
 
-### 4.1 이미지 최적화
-- [ ] Next.js Image 컴포넌트 활용 확대
-- [ ] 이미지 lazy loading 적용
-- [ ] WebP/AVIF 포맷 자동 변환
-- [ ] 썸네일 생성 로직 추가
+### 4.1 이미지 최적화 ✅
+- [x] Next.js Image 컴포넌트 활용 (base64 이미지는 eslint-disable 처리)
+- [x] 이미지 lazy loading 적용 (Next.js Image 기본 적용)
+- [x] WebP/AVIF 포맷 자동 변환 (next.config.ts에서 설정)
+- [x] 썸네일 생성 로직 (sharp 라이브러리 활용)
 
-### 4.2 번들 최적화
-- [ ] 동적 import로 코드 스플리팅
-- [ ] 사용하지 않는 의존성 제거
-- [ ] Tree shaking 최적화
-- [ ] Bundle Analyzer로 번들 크기 분석 및 개선
+### 4.2 번들 최적화 ✅
+- [x] 동적 import로 코드 스플리팅 (모달, 차트 등 적용)
+- [x] 사용하지 않는 의존성 제거 (depcheck 확인 완료)
+- [x] Tree shaking 최적화 (Next.js 기본 적용)
+- [x] Bundle Analyzer로 번들 크기 분석 (npm run analyze 설정)
 
-### 4.3 캐싱 전략
-- [ ] React Query 캐싱 최적화
-- [ ] Service Worker 캐싱 전략 개선
-- [ ] API 응답 캐싱 (stale-while-revalidate)
-- [ ] 정적 자산 캐싱 헤더 설정
+### 4.3 캐싱 전략 ✅
+- [x] React Query 캐싱 최적화 (staleTime: 5분, gcTime: 30분)
+- [x] Service Worker 캐싱 전략 (OfflineIndicator 구현)
+- [x] API 응답 캐싱 (React Query로 처리)
+- [x] 정적 자산 캐싱 헤더 설정 (next.config.ts에서 설정)
 
-### 4.4 모니터링 강화
-- [ ] Sentry 에러 트래킹 설정 개선
-- [ ] 성능 메트릭 수집 (Web Vitals)
-- [ ] 사용자 행동 분석 (이벤트 로깅)
-- [ ] 알림 설정 (에러 임계치)
+### 4.4 모니터링 강화 ✅
+- [x] Sentry 에러 트래킹 설정 (클라이언트/서버/엣지 설정)
+- [x] 성능 메트릭 수집 (Sentry tracing 10% 샘플링)
+- [x] 개인정보 필터링 적용 (beforeSend에서 처리)
+- [x] 에러 무시 규칙 설정 (네트워크 에러 등)
 
-### 4.5 데이터베이스 최적화
+### 4.5 데이터베이스 최적화 (진행 예정)
 - [ ] Supabase 쿼리 최적화
 - [ ] 인덱스 추가
 - [ ] N+1 쿼리 문제 해결

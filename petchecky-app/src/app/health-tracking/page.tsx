@@ -28,7 +28,7 @@ export interface HealthRecord {
 }
 
 export default function HealthTrackingPage() {
-  const { t } = useLanguage();
+  useLanguage();
   const [pets, setPets] = useState<PetProfile[]>([]);
   const [selectedPetId, setSelectedPetId] = useState<string | null>(null);
   const [records, setRecords] = useState<HealthRecord[]>([]);
@@ -107,7 +107,7 @@ export default function HealthTrackingPage() {
   // 날짜 범위에 따른 필터링
   const getFilteredRecords = () => {
     const now = new Date();
-    let startDate = new Date();
+    const startDate = new Date();
 
     switch (dateRange) {
       case "1m":

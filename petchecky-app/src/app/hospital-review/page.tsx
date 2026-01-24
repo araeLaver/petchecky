@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useLanguage } from "@/contexts/LanguageContext";
 
 export interface HospitalReview {
   id: string;
@@ -33,7 +32,6 @@ const TREATMENT_TYPES = [
 ];
 
 export default function HospitalReviewPage() {
-  const { t } = useLanguage();
   const [reviews, setReviews] = useState<HospitalReview[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingReview, setEditingReview] = useState<HospitalReview | null>(null);

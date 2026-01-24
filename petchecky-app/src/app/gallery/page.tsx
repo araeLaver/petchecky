@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { v4 as uuidv4 } from "uuid";
 import { PetProfile } from "@/app/page";
 import {
   isIndexedDBSupported,
@@ -35,7 +35,6 @@ export interface Album {
 }
 
 export default function GalleryPage() {
-  const { t } = useLanguage();
   const [pets, setPets] = useState<PetProfile[]>([]);
   const [selectedPetId, setSelectedPetId] = useState<string | null>(null);
   const [photos, setPhotos] = useState<GalleryPhoto[]>([]);
@@ -165,7 +164,7 @@ export default function GalleryPage() {
       const imageData = await resizeImage(file, 800, 0.8);
 
       const photo: GalleryPhoto = {
-        id: `${Date.now()}_${i}`,
+        id: `${uuidv4()}_${i}`,
         petId: selectedPetId,
         imageData,
         date: new Date().toISOString().split("T")[0],

@@ -2,8 +2,6 @@
  * 펫 관리 통합 테스트
  * 펫 등록, 조회, 수정, 삭제 플로우를 테스트합니다.
  */
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 
 // Mock localStorage
 const localStorageMock = (() => {

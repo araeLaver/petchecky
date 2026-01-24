@@ -10,6 +10,19 @@ export default function OfflineIndicator() {
   const [showBanner, setShowBanner] = useState(false);
   const [pendingSync, setPendingSync] = useState(0);
 
+  const syncPendingItems = async () => {
+    const pendingItems = localStorage.getItem("petchecky_pending_sync");
+    if (!pendingItems) return;
+
+    const items = safeJsonParse<unknown[]>(pendingItems, []);
+    if (items.length === 0) return;
+
+    // In a real app, this would sync to a backend
+    // For now, just clear the pending items
+    localStorage.removeItem("petchecky_pending_sync");
+    setPendingSync(0);
+  };
+
   useEffect(() => {
     // Set initial state
     setIsOnline(navigator.onLine);
@@ -49,19 +62,6 @@ export default function OfflineIndicator() {
       clearInterval(interval);
     };
   }, []);
-
-  const syncPendingItems = async () => {
-    const pendingItems = localStorage.getItem("petchecky_pending_sync");
-    if (!pendingItems) return;
-
-    const items = safeJsonParse<unknown[]>(pendingItems, []);
-    if (items.length === 0) return;
-
-    // In a real app, this would sync to a backend
-    // For now, just clear the pending items
-    localStorage.removeItem("petchecky_pending_sync");
-    setPendingSync(0);
-  };
 
   if (!showBanner && isOnline && pendingSync === 0) {
     return null;

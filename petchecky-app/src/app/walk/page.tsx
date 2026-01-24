@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useLanguage } from "@/contexts/LanguageContext";
 import WalkStats from "@/components/walk/WalkStats";
 import WalkHistory from "@/components/walk/WalkHistory";
 import { PetProfile } from "@/app/page";
@@ -28,7 +27,6 @@ export interface WalkRecord {
 }
 
 export default function WalkPage() {
-  const { t } = useLanguage();
   const [pets, setPets] = useState<PetProfile[]>([]);
   const [selectedPetId, setSelectedPetId] = useState<string | null>(null);
   const [records, setRecords] = useState<WalkRecord[]>([]);
@@ -106,7 +104,7 @@ export default function WalkPage() {
   // 날짜 범위에 따른 필터링
   const getFilteredRecords = () => {
     const now = new Date();
-    let startDate = new Date();
+    const startDate = new Date();
 
     switch (dateRange) {
       case "week":

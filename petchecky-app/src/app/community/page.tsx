@@ -238,7 +238,6 @@ function WritePostModal({
   onClose: () => void;
   onSuccess: (post: CommunityPost) => void;
 }) {
-  const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState({

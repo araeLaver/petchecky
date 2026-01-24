@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import ErrorBoundary, { SectionErrorBoundary } from "../ErrorBoundary";
 
 // 에러를 발생시키는 테스트 컴포넌트

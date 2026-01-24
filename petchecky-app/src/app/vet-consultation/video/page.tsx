@@ -31,7 +31,6 @@ function VideoConsultationContent() {
     symptoms: "",
   });
   const [queuePosition, setQueuePosition] = useState(0);
-  const [callDuration, setCallDuration] = useState(0);
 
   // Parse URL params
   useEffect(() => {

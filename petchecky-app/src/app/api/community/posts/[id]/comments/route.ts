@@ -160,7 +160,7 @@ export async function POST(
 // DELETE: 댓글 삭제
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  _context: { params: Promise<{ id: string }> }
 ) {
   try {
     // 인증 확인

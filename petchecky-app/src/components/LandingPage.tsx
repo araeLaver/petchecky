@@ -13,38 +13,7 @@ interface LandingPageProps {
   historyCount: number;
 }
 
-const FEATURES = [
-  {
-    icon: "🔍",
-    title: "AI 증상 분석",
-    description: "반려동물의 증상을 입력하면 AI가 가능한 원인과 대응 방법을 안내해드려요.",
-  },
-  {
-    icon: "⚡",
-    title: "위험도 자동 판단",
-    description: "증상의 심각도를 분석하여 병원 방문이 필요한지 알려드려요.",
-  },
-  {
-    icon: "📋",
-    title: "상담 기록 저장",
-    description: "이전 상담 내역을 저장하고, 언제든 다시 확인할 수 있어요.",
-  },
-  {
-    icon: "💬",
-    title: "커뮤니티",
-    description: "다른 반려인들과 정보를 공유하고 소통할 수 있어요.",
-    link: "/community",
-  },
-];
-
-const COMMON_SYMPTOMS = [
-  { emoji: "🤮", label: "구토" },
-  { emoji: "💩", label: "설사" },
-  { emoji: "😫", label: "식욕부진" },
-  { emoji: "🤒", label: "발열" },
-  { emoji: "🦵", label: "절뚝거림" },
-  { emoji: "😴", label: "무기력" },
-];
+// FEATURES and COMMON_SYMPTOMS constants removed - using localized versions below
 
 export default function LandingPage({
   petProfile,

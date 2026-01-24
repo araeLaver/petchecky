@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { v4 as uuidv4 } from "uuid";
 
 interface TrainingCommand {
   id: string;
@@ -134,7 +135,7 @@ export default function TrainingPage() {
   const handleAddCommand = (e: React.FormEvent) => {
     e.preventDefault();
     const newCommand: TrainingCommand = {
-      id: Date.now().toString(),
+      id: uuidv4(),
       petId: selectedPetId,
       name: form.name,
       category: form.category,
@@ -157,7 +158,7 @@ export default function TrainingPage() {
     }
 
     const newCommand: TrainingCommand = {
-      id: Date.now().toString(),
+      id: uuidv4(),
       petId: selectedPetId,
       name,
       category,
@@ -174,7 +175,7 @@ export default function TrainingPage() {
     if (!showSessionForm) return;
 
     const session: TrainingSession = {
-      id: Date.now().toString(),
+      id: uuidv4(),
       date: new Date().toISOString().split("T")[0],
       duration: parseInt(sessionForm.duration),
       rating: sessionForm.rating,

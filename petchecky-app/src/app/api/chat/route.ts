@@ -6,7 +6,6 @@ import { getErrorMessage } from "@/lib/errors";
 import { analyzeCombinedSeverity } from "@/lib/severity";
 import { validateChatRequest } from "@/lib/validations/chat";
 import { checkRateLimit, getClientIdentifier } from "@/lib/rateLimit";
-import type { PetProfile, ChatMessage } from "@/types/chat";
 
 const SYSTEM_PROMPT = `당신은 반려동물 건강 상담 AI 전문가 "펫체키"입니다.
 

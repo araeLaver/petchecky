@@ -96,8 +96,8 @@ export function resetRateLimitFor(identifier: string): void {
   rateLimitStore.delete(identifier);
 }
 
-// Rate Limit 상수는 @/lib/constants에서 가져와서 사용
-// import { RATE_LIMITS } from "@/lib/constants";
+// Rate Limit 상수를 re-export
+export { RATE_LIMITS } from './constants';
 
 /**
  * NextRequest에서 클라이언트 IP 추출

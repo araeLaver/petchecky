@@ -113,7 +113,6 @@ export default function HealthInsightsPage() {
   const [selectedPetId, setSelectedPetId] = useState<string>("");
   const [healthData, setHealthData] = useState<HealthData[]>([]);
   const [insights, setInsights] = useState<HealthInsight[]>([]);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Load pets
@@ -132,14 +131,7 @@ export default function HealthInsightsPage() {
       setHealthData(JSON.parse(storedHealthData));
     }
 
-    setLoading(false);
   }, []);
-
-  useEffect(() => {
-    if (selectedPetId && pets.length > 0) {
-      generateInsights();
-    }
-  }, [selectedPetId, pets, healthData]);
 
   const selectedPet = pets.find((p) => p.id === selectedPetId);
 
@@ -300,6 +292,12 @@ export default function HealthInsightsPage() {
 
     setInsights(newInsights);
   };
+
+  useEffect(() => {
+    if (selectedPetId && pets.length > 0) {
+      generateInsights();
+    }
+  }, [selectedPetId, pets, healthData]);
 
   const getInsightIcon = (type: string) => {
     switch (type) {

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useAuth } from "@/contexts/AuthContext";
+import { v4 as uuidv4 } from "uuid";
 
 interface Medication {
   id: string;
@@ -50,7 +50,6 @@ const TIME_OF_DAY: { value: Medication["timeOfDay"][number]; label: string; icon
 ];
 
 export default function MedicationPage() {
-  const { user } = useAuth();
   const [medications, setMedications] = useState<Medication[]>([]);
   const [pets, setPets] = useState<Pet[]>([]);
   const [selectedPetId, setSelectedPetId] = useState<string>("all");
@@ -100,7 +99,7 @@ export default function MedicationPage() {
     e.preventDefault();
 
     const newMed: Medication = {
-      id: editingMed?.id || Date.now().toString(),
+      id: editingMed?.id || uuidv4(),
       petId: selectedPetId === "all" ? pets[0]?.id || "default" : selectedPetId,
       name: form.name,
       dosage: form.dosage,
@@ -174,7 +173,7 @@ export default function MedicationPage() {
   const handleLogDose = (med: Medication, timeOfDay: string, taken: boolean) => {
     const now = new Date();
     const log: MedicationLog = {
-      id: Date.now().toString(),
+      id: uuidv4(),
       date: now.toISOString().split("T")[0],
       time: timeOfDay,
       taken,

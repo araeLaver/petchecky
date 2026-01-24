@@ -1,7 +1,6 @@
 "use client";
 
 import { useSubscription } from "@/contexts/SubscriptionContext";
-import { getPlanDisplayName } from "@/lib/toss";
 import { useState } from "react";
 
 export default function SubscriptionStatus() {

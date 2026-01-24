@@ -31,7 +31,7 @@ const ANALYSIS_CATEGORIES: { id: AnalysisCategory; icon: string; labelKo: string
 const STORAGE_KEY = "petchecky_image_analyses";
 
 export default function ImageAnalysisPage() {
-  const { user, getAccessToken } = useAuth();
+  const { getAccessToken } = useAuth();
   const { isPremiumPlus } = useSubscription();
   const { language } = useLanguage();
   const [selectedCategory, setSelectedCategory] = useState<AnalysisCategory>("skin");
@@ -350,6 +350,7 @@ export default function ImageAnalysisPage() {
                   className={`rounded-xl border-l-4 p-4 ${getSeverityStyle(item.severity)}`}
                 >
                   <div className="flex gap-4">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={item.imagePreview}
                       alt="Analysis"
@@ -438,6 +439,7 @@ export default function ImageAnalysisPage() {
               {selectedImage ? (
                 <div className="space-y-4">
                   <div className="relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={selectedImage.preview}
                       alt="Selected"

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useLanguage } from "@/contexts/LanguageContext";
 import { PetProfile } from "@/app/page";
 
 interface FoodRecommendation {
@@ -116,7 +115,6 @@ const DIET_TIPS = {
 };
 
 export default function DietPage() {
-  const { t } = useLanguage();
   const [pets, setPets] = useState<PetProfile[]>([]);
   const [selectedPetId, setSelectedPetId] = useState<string | null>(null);
   const [dietLogs, setDietLogs] = useState<DietLog[]>([]);

@@ -84,7 +84,6 @@ export default function ExpensePage() {
     }
   }, []);
 
-  const selectedPet = pets.find((p) => p.id === selectedPetId);
   const petExpenses = expenses.filter((e) => e.petId === selectedPetId);
   const petBudget = budgets.find((b) => b.petId === selectedPetId);
 

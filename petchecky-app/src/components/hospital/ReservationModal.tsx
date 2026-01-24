@@ -35,7 +35,7 @@ export default function ReservationModal({
   petName = "",
   petSpecies = "dog",
 }: ReservationModalProps) {
-  const { user, getAccessToken } = useAuth();
+  const { getAccessToken } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

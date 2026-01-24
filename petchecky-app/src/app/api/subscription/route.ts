@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   try {
     // 서버 사이드 인증 검증 - URL 파라미터가 아닌 인증 헤더에서 사용자 확인
     const authHeader = request.headers.get('authorization');
-    const { user, subscription, error: authError } = await authenticateRequest(authHeader);
+    const { user } = await authenticateRequest(authHeader);
 
     // 인증되지 않은 사용자
     if (!user) {
@@ -52,7 +52,7 @@ export async function DELETE(request: NextRequest) {
   try {
     // 서버 사이드 인증 검증 - URL 파라미터가 아닌 인증 헤더에서 사용자 확인
     const authHeader = request.headers.get('authorization');
-    const { user, error: authError } = await authenticateRequest(authHeader);
+    const { user } = await authenticateRequest(authHeader);
 
     // 인증되지 않은 사용자는 구독 해지 불가
     if (!user) {

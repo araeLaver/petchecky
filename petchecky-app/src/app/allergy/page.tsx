@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { v4 as uuidv4 } from "uuid";
 import { Allergy, AllergyReaction, DietaryRestriction, Pet } from "./types";
-import { ALLERGY_TYPES, COMMON_ALLERGENS, getSeverityColor, getSeverityLabel } from "./constants";
+import { ALLERGY_TYPES, COMMON_ALLERGENS } from "./constants";
 import {
   AllergyCard,
   AllergyFormModal,
@@ -64,7 +65,7 @@ export default function AllergyPage() {
 
   const handleAddAllergy = (data: Omit<Allergy, "id" | "petId" | "reactions">) => {
     const newAllergy: Allergy = {
-      id: Date.now().toString(),
+      id: uuidv4(),
       petId: selectedPetId,
       ...data,
       reactions: [],
@@ -75,7 +76,7 @@ export default function AllergyPage() {
 
   const handleAddRestriction = (data: Omit<DietaryRestriction, "id" | "petId">) => {
     const newRestriction: DietaryRestriction = {
-      id: Date.now().toString(),
+      id: uuidv4(),
       petId: selectedPetId,
       ...data,
     };
@@ -87,7 +88,7 @@ export default function AllergyPage() {
     if (!showReactionForm) return;
 
     const reaction: AllergyReaction = {
-      id: Date.now().toString(),
+      id: uuidv4(),
       date: new Date().toISOString().split("T")[0],
       ...data,
     };
@@ -114,7 +115,7 @@ export default function AllergyPage() {
 
   const handleQuickAddRestriction = (allergen: string) => {
     const newRestriction: DietaryRestriction = {
-      id: Date.now().toString(),
+      id: uuidv4(),
       petId: selectedPetId,
       ingredient: allergen,
       reason: "allergy",

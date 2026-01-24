@@ -1,6 +1,6 @@
 "use client";
 
-import { PLANS, Plan, PlanType } from "@/types/subscription";
+import { PLANS, Plan } from "@/types/subscription";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 
 interface PricingPlansProps {

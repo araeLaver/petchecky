@@ -56,18 +56,6 @@ export default function CalendarPage() {
   const daysOfWeek = language === "ko" ? DAYS_OF_WEEK_KO : language === "ja" ? DAYS_OF_WEEK_JA : DAYS_OF_WEEK_EN;
   const months = language === "ko" ? MONTHS_KO : language === "ja" ? MONTHS_JA : MONTHS_EN;
 
-  // Load pets and events
-  useEffect(() => {
-    const savedPets = localStorage.getItem("petchecky_pets");
-    if (savedPets) {
-      const parsed = JSON.parse(savedPets);
-      const petsArray = Array.isArray(parsed) ? parsed : [{ ...parsed, id: `local_${Date.now()}` }];
-      setPets(petsArray);
-    }
-
-    loadEvents();
-  }, []);
-
   const loadEvents = () => {
     const allEvents: CalendarEvent[] = [];
 
@@ -138,6 +126,18 @@ export default function CalendarPage() {
 
     setEvents(allEvents);
   };
+
+  // Load pets and events
+  useEffect(() => {
+    const savedPets = localStorage.getItem("petchecky_pets");
+    if (savedPets) {
+      const parsed = JSON.parse(savedPets);
+      const petsArray = Array.isArray(parsed) ? parsed : [{ ...parsed, id: `local_${Date.now()}` }];
+      setPets(petsArray);
+    }
+
+    loadEvents();
+  }, []);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();

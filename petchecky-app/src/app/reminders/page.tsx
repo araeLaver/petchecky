@@ -72,6 +72,11 @@ export default function RemindersPage() {
     }
   }, []);
 
+  const getTypeLabel = (type: Reminder["type"]) => {
+    const typeData = REMINDER_TYPES.find((rt) => rt.value === type);
+    return typeData ? `${typeData.icon} ${t.reminders[typeData.labelKey as keyof typeof t.reminders]}` : type;
+  };
+
   // Check for due reminders
   useEffect(() => {
     const checkReminders = () => {
@@ -106,11 +111,6 @@ export default function RemindersPage() {
 
     return () => clearInterval(interval);
   }, [reminders, isSubscribed]);
-
-  const getTypeLabel = (type: Reminder["type"]) => {
-    const typeData = REMINDER_TYPES.find((t) => t.value === type);
-    return typeData ? `${typeData.icon} ${t.reminders[typeData.labelKey as keyof typeof t.reminders]}` : type;
-  };
 
   const getRepeatLabel = (repeat: Reminder["repeat"]) => {
     return t.reminders[repeat as keyof typeof t.reminders] || repeat;

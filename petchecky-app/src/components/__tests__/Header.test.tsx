@@ -34,8 +34,17 @@ jest.mock("@/contexts/LanguageContext", () => ({
 }));
 
 // Mock child components
-jest.mock("../LanguageSelector", () => () => <div data-testid="language-selector">LanguageSelector</div>);
-jest.mock("../ThemeToggle", () => () => <div data-testid="theme-toggle">ThemeToggle</div>);
+jest.mock("../LanguageSelector", () => {
+  const MockLanguageSelector = () => <div data-testid="language-selector">LanguageSelector</div>;
+  MockLanguageSelector.displayName = "MockLanguageSelector";
+  return MockLanguageSelector;
+});
+
+jest.mock("../ThemeToggle", () => {
+  const MockThemeToggle = () => <div data-testid="theme-toggle">ThemeToggle</div>;
+  MockThemeToggle.displayName = "MockThemeToggle";
+  return MockThemeToggle;
+});
 
 describe("Header", () => {
   const mockPets = [

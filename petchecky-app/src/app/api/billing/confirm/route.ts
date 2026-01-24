@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
   try {
     // 서버 사이드 인증 검증 - 클라이언트에서 보낸 userId를 신뢰하지 않음
     const authHeader = request.headers.get('authorization');
-    const { user, error: authError } = await authenticateRequest(authHeader);
+    const { user } = await authenticateRequest(authHeader);
 
     // 인증되지 않은 사용자는 결제 불가
     if (!user) {

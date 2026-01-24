@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { v4 as uuidv4 } from "uuid";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 interface VetRecord {
@@ -94,7 +95,6 @@ export default function VetRecordsPage() {
     }
   }, []);
 
-  const selectedPet = pets.find((p) => p.id === selectedPetId);
   const petRecords = records.filter((r) => r.petId === selectedPetId);
   const filteredRecords = filterType === "all"
     ? petRecords
@@ -108,7 +108,7 @@ export default function VetRecordsPage() {
     if (!newRecord.hospitalName || !newRecord.date || !selectedPetId) return;
 
     const record: VetRecord = {
-      id: Date.now().toString(),
+      id: uuidv4(),
       petId: selectedPetId,
       date: newRecord.date,
       hospitalName: newRecord.hospitalName,

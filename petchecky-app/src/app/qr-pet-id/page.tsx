@@ -264,6 +264,7 @@ export default function QrPetIdPage() {
                 </h2>
                 <div ref={qrRef} className="flex flex-col items-center">
                   <div className="rounded-xl bg-white p-4 shadow-lg">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={qrUrl}
                       alt="QR Code"

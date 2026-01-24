@@ -110,7 +110,7 @@ const INSURANCE_PRODUCTS: InsuranceProduct[] = [
 
 export default function InsurancePage() {
   const { t } = useLanguage();
-  const [pets, setPets] = useState<PetProfile[]>([]);
+  const [_pets, setPets] = useState<PetProfile[]>([]);
   const [selectedPet, setSelectedPet] = useState<PetProfile | null>(null);
   const [activeTab, setActiveTab] = useState<"products" | "claims" | "info">("products");
   const [claims, setClaims] = useState<InsuranceClaim[]>([]);

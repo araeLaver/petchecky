@@ -1,5 +1,4 @@
 import { createClient } from '@supabase/supabase-js';
-import { cookies } from 'next/headers';
 
 // 서버 사이드에서 사용할 Supabase Admin 클라이언트
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

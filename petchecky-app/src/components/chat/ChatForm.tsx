@@ -116,6 +116,7 @@ interface ImagePreviewProps {
 function ImagePreview({ preview, onRemove }: ImagePreviewProps) {
   return (
     <div className="mb-3 relative inline-block">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={preview}
         alt="선택된 이미지"

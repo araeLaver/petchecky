@@ -69,9 +69,10 @@ export default function MessageList({
             >
               {message.role === "assistant" && <SeverityBadge severity={message.severity} />}
 
-              {/* 사용자가 첨부한 이미지 표시 */}
+              {/* 사용자가 첨부한 이미지 표시 (base64 데이터 URL) */}
               {message.image && (
                 <div className="mb-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={message.image}
                     alt="첨부 이미지"

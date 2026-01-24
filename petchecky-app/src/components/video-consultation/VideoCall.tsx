@@ -35,6 +35,13 @@ export default function VideoCall({
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Start call duration timer
+  const startTimer = useCallback(() => {
+    timerRef.current = setInterval(() => {
+      setCallDuration((prev) => prev + 1);
+    }, 1000);
+  }, []);
+
   // Initialize local video stream
   const initializeLocalStream = useCallback(async () => {
     try {
@@ -70,14 +77,7 @@ export default function VideoCall({
       console.error("Error accessing media devices:", error);
       alert("카메라/마이크 접근 권한이 필요합니다.");
     }
-  }, [vetName, petName]);
-
-  // Start call duration timer
-  const startTimer = useCallback(() => {
-    timerRef.current = setInterval(() => {
-      setCallDuration((prev) => prev + 1);
-    }, 1000);
-  }, []);
+  }, [vetName, petName, startTimer]);
 
   // Format duration as MM:SS
   const formatDuration = (seconds: number) => {

@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useLanguage } from "@/contexts/LanguageContext";
 
 export interface Message {
   id: string;
@@ -32,7 +31,6 @@ const MOCK_USERS = [
 ];
 
 export default function MessagesPage() {
-  const { t } = useLanguage();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);

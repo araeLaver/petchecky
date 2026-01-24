@@ -1,6 +1,6 @@
 // 커뮤니티 API 서비스
 
-import { apiClient, ApiResponse, ApiError } from "./apiClient";
+import { apiClient, ApiError } from "./apiClient";
 
 // 게시글 타입
 export interface Post {
