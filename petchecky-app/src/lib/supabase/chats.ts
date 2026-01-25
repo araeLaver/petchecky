@@ -16,14 +16,22 @@ export interface ChatRecord {
   created_at: string;
 }
 
-// 사용자의 상담 기록 조회
-export async function getChatRecords(userId: string): Promise<ChatRecord[]> {
-  const { data, error } = await supabase
+// 사용자의 상담 기록 조회 (필요한 컬럼만 조회)
+export async function getChatRecords(userId: string, options?: { limit?: number; offset?: number }): Promise<ChatRecord[]> {
+  let query = supabase
     .from('chat_records')
-    .select('*')
+    .select('id, user_id, pet_id, pet_name, pet_species, preview, severity, messages, created_at')
     .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(50);
+    .order('created_at', { ascending: false });
+
+  const limit = options?.limit ?? 50;
+  query = query.limit(limit);
+
+  if (options?.offset) {
+    query = query.range(options.offset, options.offset + limit - 1);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error('Error fetching chat records:', error);

@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// 사용자의 예약 내역 조회
+// 사용자의 예약 내역 조회 (페이지네이션 지원)
 export async function GET(request: NextRequest) {
   try {
     // 서버 측 인증 검증
@@ -108,22 +108,39 @@ export async function GET(request: NextRequest) {
       return ApiErrors.unauthorized();
     }
 
-    // 서버에서 검증된 user.id 사용
-    const { data, error } = await supabaseAdmin
+    // 페이지네이션 파라미터
+    const { searchParams } = new URL(request.url);
+    const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 50);
+    const offset = parseInt(searchParams.get('offset') || '0', 10);
+
+    // 서버에서 검증된 user.id 사용 (필요한 컬럼만 조회)
+    let query = supabaseAdmin
       .from("reservations")
-      .select("*")
+      .select("id, user_id, hospital_id, hospital_name, hospital_address, hospital_phone, pet_name, pet_species, symptoms, preferred_date, preferred_time, contact_phone, notes, status, created_at", { count: 'exact' })
       .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    if (offset > 0) {
+      query = query.range(offset, offset + limit - 1);
+    }
+
+    const { data, error, count } = await query;
 
     if (error) {
       // 테이블이 없는 경우 빈 배열 반환
       if (error.code === "42P01") {
-        return NextResponse.json({ reservations: [] });
+        return NextResponse.json({ reservations: [], total: 0 });
       }
       throw error;
     }
 
-    return NextResponse.json({ reservations: data });
+    return NextResponse.json({
+      reservations: data,
+      total: count ?? 0,
+      limit,
+      offset
+    });
   } catch (error) {
     console.error("Reservation fetch error:", getErrorMessage(error));
     return ApiErrors.serverError();

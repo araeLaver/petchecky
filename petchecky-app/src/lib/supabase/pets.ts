@@ -12,11 +12,11 @@ export interface Pet {
   updated_at: string;
 }
 
-// 사용자의 펫 목록 조회
+// 사용자의 펫 목록 조회 (필요한 컬럼만 조회)
 export async function getPets(userId: string): Promise<Pet[]> {
   const { data, error } = await supabase
     .from('pets')
-    .select('*')
+    .select('id, user_id, name, species, breed, age, weight, created_at, updated_at')
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
 

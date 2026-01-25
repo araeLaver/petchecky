@@ -14,7 +14,7 @@ import {
   getAlbumsByPet,
   deleteAlbum as deleteAlbumFromIDB,
   migratePhotosFromLocalStorage,
-} from "@/lib/indexeddb";
+} from "@/lib/indexedDB";
 import { safeJsonParse } from "@/lib/safeJson";
 
 export interface GalleryPhoto {

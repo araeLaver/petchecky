@@ -1,5 +1,161 @@
 import { z } from "zod";
 
+// ============================================
+// 보안 관련 상수
+// ============================================
+
+export const SECURITY_LIMITS = {
+  // 파일 업로드 제한
+  MAX_FILE_SIZE: 5 * 1024 * 1024, // 5MB
+  MAX_IMAGE_SIZE: 10 * 1024 * 1024, // 10MB for images
+  ALLOWED_IMAGE_TYPES: ["image/jpeg", "image/png", "image/gif", "image/webp"],
+  ALLOWED_DOCUMENT_TYPES: ["application/pdf"],
+
+  // 텍스트 입력 제한
+  MAX_TEXT_LENGTH: 10000,
+  MAX_NAME_LENGTH: 100,
+  MAX_DESCRIPTION_LENGTH: 5000,
+
+  // API 제한
+  MAX_ARRAY_LENGTH: 100,
+  MAX_TAGS: 10,
+} as const;
+
+// ============================================
+// 보안 유틸리티 함수
+// ============================================
+
+/**
+ * HTML 태그 제거 (XSS 방지)
+ */
+export function stripHtmlTags(input: string): string {
+  return input.replace(/<[^>]*>/g, "");
+}
+
+/**
+ * 위험한 문자 이스케이프
+ */
+export function escapeHtml(input: string): string {
+  const map: Record<string, string> = {
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#x27;",
+    "/": "&#x2F;",
+  };
+  return input.replace(/[&<>"'/]/g, (char) => map[char]);
+}
+
+/**
+ * SQL Injection 패턴 감지
+ */
+export function hasSqlInjection(input: string): boolean {
+  const patterns = [
+    /(\%27)|(\')|(\-\-)|(\%23)|(#)/i,
+    /\b(union|select|insert|update|delete|drop|create|alter|exec|execute)\b/i,
+    /(\%3D)|(=)[^\n]*((\%27)|(\')|(\-\-)|(\%3B)|(;))/i,
+  ];
+  return patterns.some((pattern) => pattern.test(input));
+}
+
+/**
+ * 안전한 문자열 검증 스키마
+ */
+export const safeStringSchema = (maxLength: number = SECURITY_LIMITS.MAX_TEXT_LENGTH) =>
+  z
+    .string()
+    .max(maxLength)
+    .refine((val) => !hasSqlInjection(val), {
+      message: "유효하지 않은 문자가 포함되어 있습니다",
+    })
+    .transform(stripHtmlTags);
+
+// ============================================
+// 파일 업로드 스키마
+// ============================================
+
+/**
+ * 이미지 파일 검증 스키마
+ */
+export const imageFileSchema = z.object({
+  name: z.string().max(255),
+  size: z.number().max(SECURITY_LIMITS.MAX_IMAGE_SIZE, "이미지는 10MB 이하여야 합니다"),
+  type: z.enum(SECURITY_LIMITS.ALLOWED_IMAGE_TYPES as unknown as [string, ...string[]], {
+    message: "지원하지 않는 이미지 형식입니다 (JPG, PNG, GIF, WebP만 가능)",
+  }),
+});
+
+/**
+ * Base64 이미지 검증 스키마
+ */
+export const base64ImageSchema = z
+  .string()
+  .refine(
+    (val) => {
+      // data:image 형식 또는 순수 base64 검증
+      if (val.startsWith("data:image/")) {
+        const base64Part = val.split(",")[1];
+        if (!base64Part) return false;
+        // Base64 크기 대략 계산 (실제 크기의 약 4/3)
+        const sizeInBytes = (base64Part.length * 3) / 4;
+        return sizeInBytes <= SECURITY_LIMITS.MAX_IMAGE_SIZE;
+      }
+      return false;
+    },
+    { message: "유효하지 않은 이미지 형식이거나 크기가 너무 큽니다" }
+  );
+
+/**
+ * 문서 파일 검증 스키마
+ */
+export const documentFileSchema = z.object({
+  name: z.string().max(255),
+  size: z.number().max(SECURITY_LIMITS.MAX_FILE_SIZE, "파일은 5MB 이하여야 합니다"),
+  type: z.enum(SECURITY_LIMITS.ALLOWED_DOCUMENT_TYPES as unknown as [string, ...string[]], {
+    message: "지원하지 않는 파일 형식입니다 (PDF만 가능)",
+  }),
+});
+
+// ============================================
+// API 요청 스키마
+// ============================================
+
+/**
+ * 페이지네이션 스키마
+ */
+export const paginationSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  offset: z.coerce.number().int().min(0).default(0),
+});
+
+export type PaginationInput = z.infer<typeof paginationSchema>;
+
+/**
+ * 정렬 스키마
+ */
+export const sortSchema = z.object({
+  sortBy: z.string().max(50).default("created_at"),
+  sortOrder: z.enum(["asc", "desc"]).default("desc"),
+});
+
+export type SortInput = z.infer<typeof sortSchema>;
+
+/**
+ * 검색 스키마
+ */
+export const searchSchema = z.object({
+  query: safeStringSchema(200).optional(),
+  filters: z.record(z.string(), z.string()).optional(),
+});
+
+export type SearchInput = z.infer<typeof searchSchema>;
+
+// ============================================
+// 기존 스키마 (보안 강화)
+// ============================================
+
 /**
  * 펫 프로필 스키마
  */

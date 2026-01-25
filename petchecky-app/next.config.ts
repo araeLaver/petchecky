@@ -37,10 +37,36 @@ const nextConfig: NextConfig = {
 
   // 헤더 설정
   async headers() {
+    // CSP 정책 정의
+    const cspDirectives = [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://*.supabase.co",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "font-src 'self' https://fonts.gstatic.com data:",
+      "img-src 'self' data: blob: https://*.supabase.co https://*.googleapis.com",
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://generativelanguage.googleapis.com https://*.sentry.io",
+      "frame-src 'self' https://*.supabase.co",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "frame-ancestors 'none'",
+      "upgrade-insecure-requests",
+    ];
+
     return [
       {
         source: "/:path*",
         headers: [
+          // Content Security Policy
+          {
+            key: "Content-Security-Policy",
+            value: cspDirectives.join("; "),
+          },
+          // HSTS - HTTPS 강제 (프로덕션에서 중요)
+          {
+            key: "Strict-Transport-Security",
+            value: "max-age=31536000; includeSubDomains; preload",
+          },
           // 보안 헤더
           {
             key: "X-Content-Type-Options",
@@ -57,6 +83,20 @@ const nextConfig: NextConfig = {
           {
             key: "Referrer-Policy",
             value: "strict-origin-when-cross-origin",
+          },
+          // Permissions Policy (브라우저 기능 제한)
+          {
+            key: "Permissions-Policy",
+            value: "camera=(self), microphone=(self), geolocation=(self), payment=()",
+          },
+          // Cross-Origin 정책
+          {
+            key: "Cross-Origin-Opener-Policy",
+            value: "same-origin",
+          },
+          {
+            key: "Cross-Origin-Resource-Policy",
+            value: "same-origin",
           },
         ],
       },

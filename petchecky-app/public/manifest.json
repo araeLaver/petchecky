@@ -2,26 +2,156 @@
   "name": "펫체키 - AI 반려동물 건강 상담",
   "short_name": "펫체키",
   "description": "AI가 체크하는 우리 아이 건강. 반려동물 증상 분석 및 대응 방법 안내 서비스.",
-  "start_url": "/",
+  "start_url": "/?source=pwa",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
   "background_color": "#EFF6FF",
   "theme_color": "#3B82F6",
-  "orientation": "portrait",
+  "orientation": "portrait-primary",
+  "id": "com.petchecky.app",
   "icons": [
+    {
+      "src": "/icons/icon-72x72.png",
+      "sizes": "72x72",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-96x96.png",
+      "sizes": "96x96",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-128x128.png",
+      "sizes": "128x128",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-144x144.png",
+      "sizes": "144x144",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-152x152.png",
+      "sizes": "152x152",
+      "type": "image/png"
+    },
     {
       "src": "/icons/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-384x384.png",
+      "sizes": "384x384",
+      "type": "image/png"
     },
     {
       "src": "/icons/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
-  "categories": ["health", "lifestyle", "utilities"],
+  "shortcuts": [
+    {
+      "name": "AI 건강 상담",
+      "short_name": "상담",
+      "description": "AI와 반려동물 건강 상담하기",
+      "url": "/?action=chat",
+      "icons": [{ "src": "/icons/shortcut-chat.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "응급 상황",
+      "short_name": "응급",
+      "description": "응급 상황 대처 가이드",
+      "url": "/emergency",
+      "icons": [{ "src": "/icons/shortcut-emergency.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "커뮤니티",
+      "short_name": "커뮤니티",
+      "description": "반려동물 보호자 커뮤니티",
+      "url": "/community",
+      "icons": [{ "src": "/icons/shortcut-community.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "이미지 분석",
+      "short_name": "이미지",
+      "description": "AI 이미지 건강 분석",
+      "url": "/image-analysis",
+      "icons": [{ "src": "/icons/shortcut-camera.png", "sizes": "96x96" }]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/screenshot-home.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "펫체키 홈 화면"
+    },
+    {
+      "src": "/screenshots/screenshot-chat.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "AI 건강 상담"
+    },
+    {
+      "src": "/screenshots/screenshot-community.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "커뮤니티"
+    },
+    {
+      "src": "/screenshots/screenshot-desktop.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "데스크톱 화면"
+    }
+  ],
+  "share_target": {
+    "action": "/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "images",
+          "accept": ["image/*"]
+        }
+      ]
+    }
+  },
+  "categories": ["health", "lifestyle", "medical", "utilities"],
   "lang": "ko",
-  "dir": "ltr"
+  "dir": "ltr",
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "handle_links": "preferred",
+  "launch_handler": {
+    "client_mode": ["navigate-existing", "auto"]
+  },
+  "edge_side_panel": {
+    "preferred_width": 400
+  }
 }

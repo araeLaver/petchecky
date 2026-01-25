@@ -1,4 +1,19 @@
 import "@testing-library/jest-dom";
+import "./src/test/matchers";
+
+// ============================================
+// MSW Setup for Tests
+// ============================================
+
+import { server } from "./src/mocks/server";
+
+beforeAll(() => server.listen({ onUnhandledRequest: "bypass" }));
+afterEach(() => server.resetHandlers());
+afterAll(() => server.close());
+
+// ============================================
+// Mock Next.js
+// ============================================
 
 // Mock Next.js server components
 jest.mock("next/server", () => ({

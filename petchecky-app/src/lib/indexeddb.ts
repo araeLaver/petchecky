@@ -4,12 +4,17 @@
  */
 
 const DB_NAME = "petchecky_db";
-const DB_VERSION = 1;
+const DB_VERSION = 2; // 버전 업그레이드
 
 // 스토어 이름
 export const STORES = {
   PHOTOS: "photos",
   ALBUMS: "albums",
+  // 오프라인 동기화용 스토어 추가
+  OFFLINE_PETS: "offline_pets",
+  OFFLINE_CHATS: "offline_chats",
+  PENDING_SYNC: "pending_sync",
+  SYNC_SETTINGS: "sync_settings",
 } as const;
 
 export type StoreName = (typeof STORES)[keyof typeof STORES];
@@ -33,9 +38,62 @@ interface Album {
   createdAt: number;
 }
 
+// 오프라인 펫 데이터
+interface OfflinePet {
+  id: string;
+  user_id: string;
+  name: string;
+  species: 'dog' | 'cat';
+  breed: string;
+  age: number;
+  weight: number;
+  created_at: string;
+  updated_at: string;
+  _synced: boolean; // 동기화 상태
+  _localUpdatedAt: string; // 로컬 수정 시간
+}
+
+// 오프라인 채팅 기록
+interface OfflineChat {
+  id: string;
+  user_id: string;
+  pet_id: string;
+  pet_name: string;
+  pet_species: 'dog' | 'cat';
+  preview: string;
+  severity: 'low' | 'medium' | 'high' | null;
+  messages: Array<{
+    role: 'user' | 'assistant';
+    content: string;
+    severity?: 'low' | 'medium' | 'high';
+  }>;
+  created_at: string;
+  _synced: boolean;
+}
+
+// 동기화 대기 항목
+export interface PendingSyncItem {
+  id: string;
+  type: 'create' | 'update' | 'delete';
+  store: StoreName;
+  data: Record<string, unknown>;
+  timestamp: string;
+  retryCount: number;
+}
+
+// 동기화 설정
+interface SyncSetting {
+  key: string;
+  value: string | number | boolean;
+}
+
 type StoreData = {
   [STORES.PHOTOS]: Photo;
   [STORES.ALBUMS]: Album;
+  [STORES.OFFLINE_PETS]: OfflinePet;
+  [STORES.OFFLINE_CHATS]: OfflineChat;
+  [STORES.PENDING_SYNC]: PendingSyncItem;
+  [STORES.SYNC_SETTINGS]: SyncSetting;
 };
 
 let dbInstance: IDBDatabase | null = null;
@@ -76,6 +134,34 @@ export function initDB(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(STORES.ALBUMS)) {
         const albumsStore = db.createObjectStore(STORES.ALBUMS, { keyPath: "id" });
         albumsStore.createIndex("petId", "petId", { unique: false });
+      }
+
+      // 오프라인 펫 데이터 스토어
+      if (!db.objectStoreNames.contains(STORES.OFFLINE_PETS)) {
+        const petsStore = db.createObjectStore(STORES.OFFLINE_PETS, { keyPath: "id" });
+        petsStore.createIndex("user_id", "user_id", { unique: false });
+        petsStore.createIndex("_synced", "_synced", { unique: false });
+      }
+
+      // 오프라인 채팅 기록 스토어
+      if (!db.objectStoreNames.contains(STORES.OFFLINE_CHATS)) {
+        const chatsStore = db.createObjectStore(STORES.OFFLINE_CHATS, { keyPath: "id" });
+        chatsStore.createIndex("user_id", "user_id", { unique: false });
+        chatsStore.createIndex("created_at", "created_at", { unique: false });
+        chatsStore.createIndex("_synced", "_synced", { unique: false });
+      }
+
+      // 동기화 대기열 스토어
+      if (!db.objectStoreNames.contains(STORES.PENDING_SYNC)) {
+        const syncStore = db.createObjectStore(STORES.PENDING_SYNC, { keyPath: "id" });
+        syncStore.createIndex("timestamp", "timestamp", { unique: false });
+        syncStore.createIndex("store", "store", { unique: false });
+        syncStore.createIndex("type", "type", { unique: false });
+      }
+
+      // 동기화 설정 스토어
+      if (!db.objectStoreNames.contains(STORES.SYNC_SETTINGS)) {
+        db.createObjectStore(STORES.SYNC_SETTINGS, { keyPath: "key" });
       }
     };
   });
@@ -315,4 +401,163 @@ export async function migratePhotosFromLocalStorage(petId: string): Promise<bool
  */
 export function isIndexedDBSupported(): boolean {
   return typeof indexedDB !== "undefined";
+}
+
+// === 오프라인 동기화 관련 함수 ===
+
+/**
+ * 동기화 대기열에 항목 추가
+ */
+export async function addToPendingSync(
+  type: PendingSyncItem['type'],
+  store: StoreName,
+  data: Record<string, unknown>
+): Promise<void> {
+  const item: PendingSyncItem = {
+    id: `sync_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+    type,
+    store,
+    data,
+    timestamp: new Date().toISOString(),
+    retryCount: 0,
+  };
+
+  await put(STORES.PENDING_SYNC, item);
+}
+
+/**
+ * 동기화 대기 항목 조회
+ */
+export async function getPendingSyncItems(): Promise<PendingSyncItem[]> {
+  const items = await getAll(STORES.PENDING_SYNC);
+  return items.sort((a, b) =>
+    new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+  );
+}
+
+/**
+ * 동기화 완료 후 항목 제거
+ */
+export async function removePendingSyncItem(id: string): Promise<void> {
+  await remove(STORES.PENDING_SYNC, id);
+}
+
+/**
+ * 재시도 횟수 증가
+ */
+export async function incrementRetryCount(id: string): Promise<void> {
+  const item = await get(STORES.PENDING_SYNC, id);
+  if (item) {
+    await put(STORES.PENDING_SYNC, {
+      ...item,
+      retryCount: item.retryCount + 1,
+    });
+  }
+}
+
+/**
+ * 오프라인 펫 데이터 저장
+ */
+export async function saveOfflinePet(pet: Omit<StoreData[typeof STORES.OFFLINE_PETS], '_synced' | '_localUpdatedAt'>, synced = false): Promise<void> {
+  await put(STORES.OFFLINE_PETS, {
+    ...pet,
+    _synced: synced,
+    _localUpdatedAt: new Date().toISOString(),
+  });
+}
+
+/**
+ * 사용자의 오프라인 펫 목록 조회
+ */
+export async function getOfflinePets(userId: string): Promise<StoreData[typeof STORES.OFFLINE_PETS][]> {
+  return getByIndex(STORES.OFFLINE_PETS, "user_id", userId);
+}
+
+/**
+ * 동기화되지 않은 펫 데이터 조회
+ */
+export async function getUnsyncedPets(): Promise<StoreData[typeof STORES.OFFLINE_PETS][]> {
+  const allPets = await getAll(STORES.OFFLINE_PETS);
+  return allPets.filter(pet => !pet._synced);
+}
+
+/**
+ * 오프라인 채팅 기록 저장
+ */
+export async function saveOfflineChat(chat: Omit<StoreData[typeof STORES.OFFLINE_CHATS], '_synced'>, synced = false): Promise<void> {
+  await put(STORES.OFFLINE_CHATS, {
+    ...chat,
+    _synced: synced,
+  });
+}
+
+/**
+ * 사용자의 오프라인 채팅 기록 조회
+ */
+export async function getOfflineChats(userId: string): Promise<StoreData[typeof STORES.OFFLINE_CHATS][]> {
+  const chats = await getByIndex(STORES.OFFLINE_CHATS, "user_id", userId);
+  return chats.sort((a, b) =>
+    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
+}
+
+/**
+ * 마지막 동기화 시간 저장
+ */
+export async function setLastSyncTime(store: string): Promise<void> {
+  await put(STORES.SYNC_SETTINGS, {
+    key: `lastSync_${store}`,
+    value: new Date().toISOString(),
+  });
+}
+
+/**
+ * 마지막 동기화 시간 조회
+ */
+export async function getLastSyncTime(store: string): Promise<string | null> {
+  const setting = await get(STORES.SYNC_SETTINGS, `lastSync_${store}`);
+  return setting?.value as string | null;
+}
+
+// === 동기화 충돌 해결 ===
+
+export interface SyncConflict {
+  id: string;
+  store: StoreName;
+  localData: Record<string, unknown>;
+  serverData: Record<string, unknown>;
+  localTimestamp: string;
+  serverTimestamp: string;
+}
+
+export type ConflictResolution = 'use_local' | 'use_server' | 'merge';
+
+/**
+ * 타임스탬프 기반 자동 충돌 해결
+ */
+export function resolveConflict(
+  conflict: SyncConflict,
+  strategy: ConflictResolution = 'use_server'
+): Record<string, unknown> {
+  switch (strategy) {
+    case 'use_local':
+      return conflict.localData;
+
+    case 'use_server':
+      return conflict.serverData;
+
+    case 'merge':
+      // 최신 타임스탬프 데이터 우선, 필드별 병합
+      const localTime = new Date(conflict.localTimestamp).getTime();
+      const serverTime = new Date(conflict.serverTimestamp).getTime();
+
+      if (localTime > serverTime) {
+        return { ...conflict.serverData, ...conflict.localData };
+      } else {
+        return { ...conflict.localData, ...conflict.serverData };
+      }
+
+    default:
+      return conflict.serverData;
+  }
 }

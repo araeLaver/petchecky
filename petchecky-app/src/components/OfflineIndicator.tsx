@@ -1,69 +1,55 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { safeJsonParse } from "@/lib/safeJson";
+import {
+  initDB,
+  getPendingSyncItems,
+  isIndexedDBSupported,
+} from "@/lib/indexedDB";
+import { useOfflineSync } from "@/hooks/useOfflineSync";
 
 export default function OfflineIndicator() {
   const { t } = useLanguage();
-  const [isOnline, setIsOnline] = useState(true);
   const [showBanner, setShowBanner] = useState(false);
-  const [pendingSync, setPendingSync] = useState(0);
 
-  const syncPendingItems = async () => {
-    const pendingItems = localStorage.getItem("petchecky_pending_sync");
-    if (!pendingItems) return;
+  const {
+    isOnline,
+    isSyncing,
+    pendingCount,
+    sync,
+  } = useOfflineSync({
+    autoSync: true,
+    syncInterval: 30000, // 30초마다 동기화
+  });
 
-    const items = safeJsonParse<unknown[]>(pendingItems, []);
-    if (items.length === 0) return;
-
-    // In a real app, this would sync to a backend
-    // For now, just clear the pending items
-    localStorage.removeItem("petchecky_pending_sync");
-    setPendingSync(0);
-  };
+  const syncPendingItems = useCallback(async () => {
+    if (isSyncing) return;
+    await sync();
+  }, [isSyncing, sync]);
 
   useEffect(() => {
-    // Set initial state
-    setIsOnline(navigator.onLine);
-
-    // Check for pending sync items
-    const checkPendingSync = () => {
-      const pendingItems = localStorage.getItem("petchecky_pending_sync");
-      const items = safeJsonParse<unknown[]>(pendingItems, []);
-      setPendingSync(items.length);
-    };
-
-    checkPendingSync();
-
-    // Event listeners
+    // 온라인/오프라인 상태 변경 시 배너 표시
     const handleOnline = () => {
-      setIsOnline(true);
       setShowBanner(true);
-      // Try to sync pending items
       syncPendingItems();
       setTimeout(() => setShowBanner(false), 3000);
     };
 
     const handleOffline = () => {
-      setIsOnline(false);
       setShowBanner(true);
     };
 
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
 
-    // Check pending sync periodically
-    const interval = setInterval(checkPendingSync, 5000);
-
     return () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
-      clearInterval(interval);
     };
-  }, []);
+  }, [syncPendingItems]);
 
-  if (!showBanner && isOnline && pendingSync === 0) {
+  if (!showBanner && isOnline && pendingCount === 0) {
     return null;
   }
 
@@ -104,14 +90,17 @@ export default function OfflineIndicator() {
       )}
 
       {/* Pending Sync Indicator */}
-      {pendingSync > 0 && isOnline && (
+      {pendingCount > 0 && isOnline && (
         <div className="fixed bottom-20 right-4 z-40">
           <button
             onClick={syncPendingItems}
-            className="flex items-center gap-2 rounded-full bg-blue-500 px-4 py-2 text-sm text-white shadow-lg"
+            disabled={isSyncing}
+            className="flex items-center gap-2 rounded-full bg-blue-500 px-4 py-2 text-sm text-white shadow-lg disabled:opacity-50"
           >
-            <span className="animate-spin">↻</span>
-            {t.offline.pendingSync.replace("{count}", String(pendingSync))}
+            <span className={isSyncing ? "animate-spin" : ""}>↻</span>
+            {isSyncing
+              ? t.offline.syncing || "동기화 중..."
+              : t.offline.pendingSync.replace("{count}", String(pendingCount))}
           </button>
         </div>
       )}
@@ -119,22 +108,7 @@ export default function OfflineIndicator() {
   );
 }
 
-// Utility function to add items to pending sync queue
-export function addToPendingSync(type: string, data: Record<string, unknown>) {
-  const pendingItems = localStorage.getItem("petchecky_pending_sync");
-  const items = safeJsonParse<unknown[]>(pendingItems, []);
-
-  items.push({
-    id: Date.now().toString(),
-    type,
-    data,
-    timestamp: new Date().toISOString(),
-  });
-
-  localStorage.setItem("petchecky_pending_sync", JSON.stringify(items));
-}
-
-// Hook for checking online status
+// Hook for checking online status (레거시 지원)
 export function useOnlineStatus() {
   const [isOnline, setIsOnline] = useState(true);
 
@@ -155,3 +129,6 @@ export function useOnlineStatus() {
 
   return isOnline;
 }
+
+// IndexedDB 기반 오프라인 저장 함수로 내보내기 (레거시 호환)
+export { addToPendingSync as addToOfflineQueue } from "@/lib/indexedDB";

@@ -1,7 +1,15 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { translations, Language, TranslationKeys, languageNames, languageFlags } from "@/locales";
+import {
+  translations,
+  Language,
+  TranslationKeys,
+  languageNames,
+  languageFlags,
+  languageMetadata,
+  isRtlLanguage,
+} from "@/locales";
 
 interface LanguageContextType {
   language: Language;
@@ -9,11 +17,17 @@ interface LanguageContextType {
   t: TranslationKeys;
   languageName: string;
   languageFlag: string;
+  // RTL 지원
+  direction: "ltr" | "rtl";
+  isRtl: boolean;
+  // 언어 메타데이터
+  availableLanguages: Language[];
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 const STORAGE_KEY = "petchecky_language";
+const AVAILABLE_LANGUAGES: Language[] = ["ko", "en", "ja", "zh"];
 
 // 브라우저 언어 감지
 function detectBrowserLanguage(): Language {
@@ -23,6 +37,7 @@ function detectBrowserLanguage(): Language {
 
   if (browserLang.startsWith("ko")) return "ko";
   if (browserLang.startsWith("ja")) return "ja";
+  if (browserLang.startsWith("zh")) return "zh";
   if (browserLang.startsWith("en")) return "en";
 
   return "ko"; // 기본값
@@ -36,7 +51,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const savedLang = localStorage.getItem(STORAGE_KEY) as Language | null;
 
-    if (savedLang && ["ko", "en", "ja"].includes(savedLang)) {
+    if (savedLang && AVAILABLE_LANGUAGES.includes(savedLang)) {
       setLanguageState(savedLang);
     } else {
       const detectedLang = detectBrowserLanguage();
@@ -51,16 +66,21 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     setLanguageState(lang);
     localStorage.setItem(STORAGE_KEY, lang);
 
-    // HTML lang 속성 업데이트
+    // HTML lang 및 dir 속성 업데이트
     document.documentElement.lang = lang;
+    document.documentElement.dir = languageMetadata[lang].direction;
   };
 
-  // HTML lang 속성 초기 설정
+  // HTML lang 및 dir 속성 초기 설정
   useEffect(() => {
     if (isInitialized) {
       document.documentElement.lang = language;
+      document.documentElement.dir = languageMetadata[language].direction;
     }
   }, [language, isInitialized]);
+
+  const isRtl = isRtlLanguage(language);
+  const direction = languageMetadata[language].direction;
 
   const value: LanguageContextType = {
     language,
@@ -68,6 +88,9 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     t: translations[language],
     languageName: languageNames[language],
     languageFlag: languageFlags[language],
+    direction,
+    isRtl,
+    availableLanguages: AVAILABLE_LANGUAGES,
   };
 
   return (

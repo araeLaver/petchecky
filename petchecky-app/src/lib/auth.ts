@@ -1,4 +1,37 @@
 import { createClient } from '@supabase/supabase-js';
+import { extractClientIp, generateRequestFingerprint } from './security';
+
+// ============================================
+// 보안 상수
+// ============================================
+
+const AUTH_CONFIG = {
+  // 토큰 만료 시간 (초)
+  TOKEN_EXPIRY: 60 * 60, // 1시간
+  // 세션 최대 유효 기간 (일)
+  SESSION_MAX_AGE_DAYS: 7,
+  // 비활성 세션 타임아웃 (분)
+  INACTIVITY_TIMEOUT_MINS: 30,
+  // 최대 동시 세션 수
+  MAX_CONCURRENT_SESSIONS: 5,
+  // 실패한 로그인 시도 제한
+  MAX_LOGIN_ATTEMPTS: 5,
+  // 로그인 잠금 시간 (분)
+  LOGIN_LOCKOUT_MINS: 15,
+} as const;
+
+// ============================================
+// 역할 정의
+// ============================================
+
+export type UserRole = 'user' | 'premium' | 'premium_plus' | 'admin';
+
+export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
+  user: ['read:own', 'write:own', 'chat:basic'],
+  premium: ['read:own', 'write:own', 'chat:advanced', 'analytics:basic'],
+  premium_plus: ['read:own', 'write:own', 'chat:unlimited', 'analytics:advanced', 'export:data'],
+  admin: ['read:all', 'write:all', 'delete:all', 'admin:users', 'admin:settings'],
+};
 
 // 서버 사이드에서 사용할 Supabase Admin 클라이언트
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -196,3 +229,209 @@ export function sanitizePetProfile(profile: {
     weight: Math.max(0, Math.min(200, Number(profile.weight) || 0)),
   };
 }
+
+// ============================================
+// 역할 기반 접근 제어 (RBAC)
+// ============================================
+
+/**
+ * 사용자 역할 결정
+ */
+export function getUserRole(subscription: SubscriptionInfo, isAdmin?: boolean): UserRole {
+  if (isAdmin) return 'admin';
+  if (subscription.isPremiumPlus) return 'premium_plus';
+  if (subscription.isPremium) return 'premium';
+  return 'user';
+}
+
+/**
+ * 권한 확인
+ */
+export function hasPermission(role: UserRole, permission: string): boolean {
+  const rolePermissions = ROLE_PERMISSIONS[role] || [];
+  return rolePermissions.includes(permission);
+}
+
+/**
+ * 여러 권한 중 하나라도 있는지 확인
+ */
+export function hasAnyPermission(role: UserRole, permissions: string[]): boolean {
+  return permissions.some(permission => hasPermission(role, permission));
+}
+
+/**
+ * 모든 권한이 있는지 확인
+ */
+export function hasAllPermissions(role: UserRole, permissions: string[]): boolean {
+  return permissions.every(permission => hasPermission(role, permission));
+}
+
+/**
+ * API 엔드포인트 접근 권한 검증
+ */
+export async function authorizeApiAccess(
+  authHeader: string | null,
+  requiredPermissions: string[]
+): Promise<{ authorized: boolean; user: AuthenticatedUser | null; error?: string }> {
+  const authResult = await authenticateRequest(authHeader);
+
+  if (!authResult.user) {
+    return {
+      authorized: false,
+      user: null,
+      error: '인증이 필요합니다.',
+    };
+  }
+
+  const role = getUserRole(authResult.subscription);
+  const hasAccess = hasAllPermissions(role, requiredPermissions);
+
+  if (!hasAccess) {
+    return {
+      authorized: false,
+      user: authResult.user,
+      error: '이 작업을 수행할 권한이 없습니다.',
+    };
+  }
+
+  return {
+    authorized: true,
+    user: authResult.user,
+  };
+}
+
+// ============================================
+// 세션 관리
+// ============================================
+
+// 메모리 기반 세션 추적 (프로덕션에서는 Redis 권장)
+const sessionTracker = new Map<string, {
+  lastActivity: number;
+  fingerprint: string;
+  createdAt: number;
+}>();
+
+/**
+ * 세션 활동 기록
+ */
+export function trackSessionActivity(userId: string, headers: Headers): void {
+  const fingerprint = generateRequestFingerprint(headers, '/session');
+
+  sessionTracker.set(userId, {
+    lastActivity: Date.now(),
+    fingerprint,
+    createdAt: sessionTracker.get(userId)?.createdAt || Date.now(),
+  });
+
+  // 오래된 세션 정리 (1시간마다)
+  if (Math.random() < 0.01) {
+    cleanupOldSessions();
+  }
+}
+
+/**
+ * 세션 유효성 확인
+ */
+export function isSessionValid(userId: string, headers: Headers): boolean {
+  const session = sessionTracker.get(userId);
+  if (!session) return true; // 새 세션은 허용
+
+  const now = Date.now();
+  const inactivityMs = AUTH_CONFIG.INACTIVITY_TIMEOUT_MINS * 60 * 1000;
+  const maxAgeMs = AUTH_CONFIG.SESSION_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
+
+  // 비활성 타임아웃 확인
+  if (now - session.lastActivity > inactivityMs) {
+    sessionTracker.delete(userId);
+    return false;
+  }
+
+  // 최대 세션 기간 확인
+  if (now - session.createdAt > maxAgeMs) {
+    sessionTracker.delete(userId);
+    return false;
+  }
+
+  // 핑거프린트 변경 감지 (세션 하이재킹 방지)
+  const currentFingerprint = generateRequestFingerprint(headers, '/session');
+  if (session.fingerprint !== currentFingerprint) {
+    // 다른 기기/브라우저에서 접근 - 로깅만 하고 허용
+    console.warn(`Session fingerprint mismatch for user ${userId}`);
+  }
+
+  return true;
+}
+
+/**
+ * 세션 무효화
+ */
+export function invalidateSession(userId: string): void {
+  sessionTracker.delete(userId);
+}
+
+/**
+ * 오래된 세션 정리
+ */
+function cleanupOldSessions(): void {
+  const now = Date.now();
+  const maxAgeMs = AUTH_CONFIG.SESSION_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
+
+  for (const [userId, session] of sessionTracker.entries()) {
+    if (now - session.createdAt > maxAgeMs) {
+      sessionTracker.delete(userId);
+    }
+  }
+}
+
+// ============================================
+// 로그인 시도 제한
+// ============================================
+
+const loginAttempts = new Map<string, { count: number; lockUntil: number }>();
+
+/**
+ * 로그인 시도 기록
+ */
+export function recordLoginAttempt(identifier: string, success: boolean): void {
+  const now = Date.now();
+  const attempt = loginAttempts.get(identifier);
+
+  if (success) {
+    // 성공 시 기록 초기화
+    loginAttempts.delete(identifier);
+    return;
+  }
+
+  // 실패 시 카운트 증가
+  const count = (attempt?.count || 0) + 1;
+  const lockUntil = count >= AUTH_CONFIG.MAX_LOGIN_ATTEMPTS
+    ? now + AUTH_CONFIG.LOGIN_LOCKOUT_MINS * 60 * 1000
+    : 0;
+
+  loginAttempts.set(identifier, { count, lockUntil });
+}
+
+/**
+ * 로그인 잠금 상태 확인
+ */
+export function isLoginLocked(identifier: string): { locked: boolean; remainingTime?: number } {
+  const attempt = loginAttempts.get(identifier);
+  if (!attempt || !attempt.lockUntil) {
+    return { locked: false };
+  }
+
+  const now = Date.now();
+  if (now >= attempt.lockUntil) {
+    // 잠금 해제
+    loginAttempts.delete(identifier);
+    return { locked: false };
+  }
+
+  return {
+    locked: true,
+    remainingTime: Math.ceil((attempt.lockUntil - now) / 1000 / 60), // 분 단위
+  };
+}
+
+// Export config for use in other modules
+export { AUTH_CONFIG };

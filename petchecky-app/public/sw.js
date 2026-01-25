@@ -1,193 +1,545 @@
-// 펫체키 Service Worker for Offline Support and Push Notifications
+// 펫체키 Service Worker v3 - Enhanced PWA Support
+// Caching strategies, Background Sync, Share Target, Push Notifications
 
-const CACHE_NAME = 'petchecky-v2';
-const OFFLINE_URL = '/';
+const CACHE_VERSION = 'v3';
+const STATIC_CACHE = `petchecky-static-${CACHE_VERSION}`;
+const DYNAMIC_CACHE = `petchecky-dynamic-${CACHE_VERSION}`;
+const IMAGE_CACHE = `petchecky-images-${CACHE_VERSION}`;
+const API_CACHE = `petchecky-api-${CACHE_VERSION}`;
 
-// Assets to cache immediately for offline use
+const OFFLINE_URL = '/offline';
+const OFFLINE_FALLBACK_URL = '/';
+
+// Static assets to precache
 const PRECACHE_ASSETS = [
   '/',
   '/manifest.json',
+  '/offline',
+  '/icons/icon-192x192.png',
+  '/icons/icon-512x512.png',
 ];
 
-// 서비스 워커 설치 시 - 기본 자산 캐싱
+// Cache limits
+const CACHE_LIMITS = {
+  dynamic: 50,
+  images: 100,
+  api: 30,
+};
+
+// Cacheable API routes (read-only endpoints)
+const CACHEABLE_API_ROUTES = [
+  '/api/community/posts',
+];
+
+// ======================
+// Installation
+// ======================
 self.addEventListener('install', (event) => {
+  console.log('[SW] Installing Service Worker v3');
+
   event.waitUntil(
-    caches.open(CACHE_NAME)
+    caches.open(STATIC_CACHE)
       .then((cache) => {
-        console.log('PetChecky SW: Caching core assets');
+        console.log('[SW] Precaching static assets');
         return cache.addAll(PRECACHE_ASSETS);
       })
       .then(() => self.skipWaiting())
+      .catch((error) => {
+        console.error('[SW] Precache failed:', error);
+      })
   );
 });
 
-// 서비스 워커 활성화 시 - 이전 캐시 정리
+// ======================
+// Activation
+// ======================
 self.addEventListener('activate', (event) => {
+  console.log('[SW] Activating Service Worker v3');
+
+  const currentCaches = [STATIC_CACHE, DYNAMIC_CACHE, IMAGE_CACHE, API_CACHE];
+
   event.waitUntil(
     caches.keys()
       .then((cacheNames) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
-            if (cacheName !== CACHE_NAME) {
-              console.log('PetChecky SW: Deleting old cache:', cacheName);
+            if (!currentCaches.includes(cacheName)) {
+              console.log('[SW] Deleting old cache:', cacheName);
               return caches.delete(cacheName);
             }
           })
         );
       })
+      .then(() => {
+        // Enable navigation preload if supported
+        if (self.registration.navigationPreload) {
+          return self.registration.navigationPreload.enable();
+        }
+      })
       .then(() => clients.claim())
   );
 });
 
-// 네트워크 요청 가로채기 - 캐시 우선 전략
+// ======================
+// Fetch Handling
+// ======================
 self.addEventListener('fetch', (event) => {
-  // GET 요청만 캐시
-  if (event.request.method !== 'GET') return;
+  const { request } = event;
+  const url = new URL(request.url);
 
-  // API 요청은 항상 네트워크 우선
-  if (event.request.url.includes('/api/')) {
-    event.respondWith(
-      fetch(event.request)
-        .catch(() => {
-          return new Response(
-            JSON.stringify({ error: 'offline', message: '오프라인 상태입니다' }),
-            { status: 503, headers: { 'Content-Type': 'application/json' } }
-          );
-        })
-    );
+  // Only handle same-origin requests
+  if (url.origin !== location.origin) return;
+
+  // Skip non-GET requests (except Share Target)
+  if (request.method !== 'GET') {
+    if (request.method === 'POST' && url.pathname === '/share') {
+      event.respondWith(handleShareTarget(request));
+    }
     return;
   }
 
-  // 정적 자산은 캐시 우선, 네트워크 폴백
-  event.respondWith(
-    caches.match(event.request)
-      .then((cachedResponse) => {
-        if (cachedResponse) {
-          // 백그라운드에서 캐시 업데이트
-          event.waitUntil(
-            fetch(event.request)
-              .then((response) => {
-                if (response && response.status === 200) {
-                  const responseClone = response.clone();
-                  caches.open(CACHE_NAME).then((cache) => {
-                    cache.put(event.request, responseClone);
-                  });
-                }
-              })
-              .catch(() => {})
-          );
-          return cachedResponse;
-        }
-
-        // 캐시에 없으면 네트워크 요청
-        return fetch(event.request)
-          .then((response) => {
-            // 유효한 응답만 캐시
-            if (!response || response.status !== 200 || response.type !== 'basic') {
-              return response;
-            }
-
-            const responseClone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseClone);
-            });
-
-            return response;
-          })
-          .catch(() => {
-            // 네비게이션 요청은 메인 페이지로 폴백
-            if (event.request.mode === 'navigate') {
-              return caches.match(OFFLINE_URL);
-            }
-            return new Response('Offline', { status: 503 });
-          });
-      })
-  );
+  // Route to appropriate strategy
+  if (url.pathname.startsWith('/api/')) {
+    event.respondWith(handleApiRequest(event));
+  } else if (isImageRequest(request)) {
+    event.respondWith(handleImageRequest(event));
+  } else if (request.mode === 'navigate') {
+    event.respondWith(handleNavigationRequest(event));
+  } else {
+    event.respondWith(handleStaticRequest(event));
+  }
 });
 
-// 백그라운드 동기화
+// ======================
+// Caching Strategies
+// ======================
+
+// Network First with Cache Fallback (for navigation)
+async function handleNavigationRequest(event) {
+  const { request } = event;
+
+  try {
+    // Try navigation preload first
+    const preloadResponse = await event.preloadResponse;
+    if (preloadResponse) {
+      return preloadResponse;
+    }
+
+    // Network request
+    const networkResponse = await fetch(request);
+
+    if (networkResponse.ok) {
+      const cache = await caches.open(DYNAMIC_CACHE);
+      cache.put(request, networkResponse.clone());
+    }
+
+    return networkResponse;
+  } catch (error) {
+    console.log('[SW] Navigation request failed, serving cached or offline page');
+
+    const cachedResponse = await caches.match(request);
+    if (cachedResponse) {
+      return cachedResponse;
+    }
+
+    // Return offline page
+    const offlinePage = await caches.match(OFFLINE_URL);
+    if (offlinePage) {
+      return offlinePage;
+    }
+
+    // Ultimate fallback to home
+    return caches.match(OFFLINE_FALLBACK_URL);
+  }
+}
+
+// Stale While Revalidate (for static assets)
+async function handleStaticRequest(event) {
+  const { request } = event;
+
+  const cachedResponse = await caches.match(request);
+
+  const networkFetch = fetch(request)
+    .then(async (response) => {
+      if (response.ok) {
+        const cache = await caches.open(STATIC_CACHE);
+        cache.put(request, response.clone());
+      }
+      return response;
+    })
+    .catch(() => cachedResponse);
+
+  return cachedResponse || networkFetch;
+}
+
+// Cache First with Network Fallback (for images)
+async function handleImageRequest(event) {
+  const { request } = event;
+
+  const cachedResponse = await caches.match(request);
+  if (cachedResponse) {
+    return cachedResponse;
+  }
+
+  try {
+    const networkResponse = await fetch(request);
+
+    if (networkResponse.ok) {
+      const cache = await caches.open(IMAGE_CACHE);
+      cache.put(request, networkResponse.clone());
+      await trimCache(IMAGE_CACHE, CACHE_LIMITS.images);
+    }
+
+    return networkResponse;
+  } catch (error) {
+    // Return a placeholder image for failed image requests
+    return new Response('', { status: 404 });
+  }
+}
+
+// Network First with Timeout (for API)
+async function handleApiRequest(event) {
+  const { request } = event;
+  const url = new URL(request.url);
+
+  // Check if this API route is cacheable
+  const isCacheable = CACHEABLE_API_ROUTES.some(route =>
+    url.pathname.startsWith(route)
+  );
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    const networkResponse = await fetch(request, {
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    if (networkResponse.ok && isCacheable) {
+      const cache = await caches.open(API_CACHE);
+      cache.put(request, networkResponse.clone());
+      await trimCache(API_CACHE, CACHE_LIMITS.api);
+    }
+
+    return networkResponse;
+  } catch (error) {
+    console.log('[SW] API request failed:', request.url);
+
+    // Try cache for cacheable routes
+    if (isCacheable) {
+      const cachedResponse = await caches.match(request);
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+    }
+
+    // Return offline error response
+    return new Response(
+      JSON.stringify({
+        error: 'offline',
+        message: '오프라인 상태입니다. 인터넷 연결을 확인해주세요.',
+        timestamp: Date.now(),
+      }),
+      {
+        status: 503,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+  }
+}
+
+// ======================
+// Share Target Handler
+// ======================
+async function handleShareTarget(request) {
+  console.log('[SW] Handling share target');
+
+  try {
+    const formData = await request.formData();
+    const title = formData.get('title') || '';
+    const text = formData.get('text') || '';
+    const url = formData.get('url') || '';
+    const files = formData.getAll('images');
+
+    // Store shared data for the client to pick up
+    const shareData = {
+      title,
+      text,
+      url,
+      hasFiles: files.length > 0,
+      timestamp: Date.now(),
+    };
+
+    // Send message to all clients
+    const allClients = await clients.matchAll({ type: 'window' });
+    for (const client of allClients) {
+      client.postMessage({
+        type: 'SHARE_TARGET_DATA',
+        data: shareData,
+      });
+    }
+
+    // Redirect to chat with shared content
+    const redirectUrl = new URL('/', self.location.origin);
+    redirectUrl.searchParams.set('action', 'chat');
+    if (text) redirectUrl.searchParams.set('shared_text', text);
+    if (url) redirectUrl.searchParams.set('shared_url', url);
+
+    return Response.redirect(redirectUrl.href, 303);
+  } catch (error) {
+    console.error('[SW] Share target error:', error);
+    return Response.redirect('/', 303);
+  }
+}
+
+// ======================
+// Background Sync
+// ======================
 self.addEventListener('sync', (event) => {
-  if (event.tag === 'petchecky-sync') {
-    event.waitUntil(syncPendingData());
+  console.log('[SW] Background sync:', event.tag);
+
+  switch (event.tag) {
+    case 'petchecky-sync':
+      event.waitUntil(syncPendingData());
+      break;
+    case 'petchecky-sync-messages':
+      event.waitUntil(syncPendingMessages());
+      break;
+    default:
+      console.log('[SW] Unknown sync tag:', event.tag);
   }
 });
 
 async function syncPendingData() {
-  console.log('PetChecky SW: Background sync triggered');
-  // 클라이언트에 메시지 전송
-  const clients = await self.clients.matchAll();
-  clients.forEach(client => {
+  console.log('[SW] Syncing pending data');
+
+  // Notify clients about sync
+  const allClients = await clients.matchAll();
+  for (const client of allClients) {
+    client.postMessage({ type: 'SYNC_STARTED' });
+  }
+
+  // Sync logic would go here (e.g., retry failed API calls)
+
+  for (const client of allClients) {
     client.postMessage({ type: 'SYNC_COMPLETE' });
-  });
+  }
 }
 
-// 푸시 알림 수신 시
+async function syncPendingMessages() {
+  console.log('[SW] Syncing pending messages');
+
+  const allClients = await clients.matchAll();
+  for (const client of allClients) {
+    client.postMessage({ type: 'SYNC_MESSAGES' });
+  }
+}
+
+// Periodic Background Sync (if supported)
+self.addEventListener('periodicsync', (event) => {
+  console.log('[SW] Periodic sync:', event.tag);
+
+  if (event.tag === 'petchecky-daily-update') {
+    event.waitUntil(performPeriodicSync());
+  }
+});
+
+async function performPeriodicSync() {
+  console.log('[SW] Performing periodic sync');
+
+  // Refresh cached API data
+  try {
+    const cache = await caches.open(API_CACHE);
+    const requests = await cache.keys();
+
+    for (const request of requests) {
+      try {
+        const response = await fetch(request);
+        if (response.ok) {
+          await cache.put(request, response);
+        }
+      } catch (error) {
+        console.log('[SW] Failed to refresh:', request.url);
+      }
+    }
+  } catch (error) {
+    console.error('[SW] Periodic sync error:', error);
+  }
+}
+
+// ======================
+// Push Notifications
+// ======================
 self.addEventListener('push', (event) => {
+  console.log('[SW] Push received');
+
   if (!event.data) return;
 
   try {
     const data = event.data.json();
+
     const options = {
       body: data.body || '펫체키에서 새로운 알림이 도착했습니다.',
-      icon: '/icons/icon-192x192.png',
-      badge: '/icons/icon-192x192.png',
-      vibrate: [100, 50, 100],
+      icon: data.icon || '/icons/icon-192x192.png',
+      badge: '/icons/icon-72x72.png',
+      image: data.image,
+      vibrate: [100, 50, 100, 50, 100],
       data: {
         url: data.url || '/',
+        actionUrl: data.actionUrl,
         dateOfArrival: Date.now(),
+        primaryKey: data.id || Date.now(),
       },
       actions: data.actions || [
-        { action: 'open', title: '열기' },
-        { action: 'close', title: '닫기' },
+        { action: 'open', title: '확인하기', icon: '/icons/action-open.png' },
+        { action: 'dismiss', title: '닫기', icon: '/icons/action-close.png' },
       ],
-      tag: data.tag || 'petchecky-notification',
-      renotify: true,
+      tag: data.tag || `petchecky-${Date.now()}`,
+      renotify: data.renotify !== false,
+      requireInteraction: data.requireInteraction || false,
+      silent: data.silent || false,
     };
 
     event.waitUntil(
       self.registration.showNotification(data.title || '펫체키', options)
     );
   } catch (error) {
-    console.error('Push notification error:', error);
-  }
-});
+    console.error('[SW] Push notification error:', error);
 
-// 알림 클릭 시
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-
-  if (event.action === 'close') return;
-
-  const urlToOpen = event.notification.data?.url || '/';
-
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // 이미 열린 창이 있으면 포커스
-      for (const client of clientList) {
-        if (client.url.includes(self.registration.scope) && 'focus' in client) {
-          client.navigate(urlToOpen);
-          return client.focus();
-        }
-      }
-      // 없으면 새 창 열기
-      if (clients.openWindow) {
-        return clients.openWindow(urlToOpen);
-      }
-    })
-  );
-});
-
-// 메시지 수신 (클라이언트와 통신)
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
-
-  if (event.data && event.data.type === 'CACHE_URLS') {
+    // Fallback notification
     event.waitUntil(
-      caches.open(CACHE_NAME).then((cache) => {
-        return cache.addAll(event.data.urls);
+      self.registration.showNotification('펫체키', {
+        body: event.data.text() || '새로운 알림',
+        icon: '/icons/icon-192x192.png',
       })
     );
   }
 });
+
+self.addEventListener('notificationclick', (event) => {
+  console.log('[SW] Notification clicked:', event.action);
+
+  event.notification.close();
+
+  if (event.action === 'dismiss') return;
+
+  const urlToOpen = event.notification.data?.actionUrl ||
+                    event.notification.data?.url ||
+                    '/';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then((clientList) => {
+        // Focus existing window if available
+        for (const client of clientList) {
+          if (client.url.includes(self.registration.scope) && 'focus' in client) {
+            client.navigate(urlToOpen);
+            return client.focus();
+          }
+        }
+        // Open new window
+        if (clients.openWindow) {
+          return clients.openWindow(urlToOpen);
+        }
+      })
+  );
+});
+
+self.addEventListener('notificationclose', (event) => {
+  console.log('[SW] Notification closed');
+
+  // Track notification dismissal (analytics)
+  const data = event.notification.data;
+  if (data?.primaryKey) {
+    // Could send analytics event here
+  }
+});
+
+// ======================
+// Message Handler
+// ======================
+self.addEventListener('message', (event) => {
+  console.log('[SW] Message received:', event.data?.type);
+
+  const { type, data } = event.data || {};
+
+  switch (type) {
+    case 'SKIP_WAITING':
+      self.skipWaiting();
+      break;
+
+    case 'CACHE_URLS':
+      event.waitUntil(cacheUrls(data.urls));
+      break;
+
+    case 'CLEAR_CACHE':
+      event.waitUntil(clearAllCaches());
+      break;
+
+    case 'GET_CACHE_STATUS':
+      event.waitUntil(sendCacheStatus(event.source));
+      break;
+
+    default:
+      console.log('[SW] Unknown message type:', type);
+  }
+});
+
+async function cacheUrls(urls) {
+  if (!urls || !urls.length) return;
+
+  const cache = await caches.open(DYNAMIC_CACHE);
+  await cache.addAll(urls);
+  await trimCache(DYNAMIC_CACHE, CACHE_LIMITS.dynamic);
+}
+
+async function clearAllCaches() {
+  const cacheNames = await caches.keys();
+  await Promise.all(
+    cacheNames.map((name) => caches.delete(name))
+  );
+  console.log('[SW] All caches cleared');
+}
+
+async function sendCacheStatus(client) {
+  const cacheNames = await caches.keys();
+  const status = {};
+
+  for (const name of cacheNames) {
+    const cache = await caches.open(name);
+    const keys = await cache.keys();
+    status[name] = keys.length;
+  }
+
+  client.postMessage({
+    type: 'CACHE_STATUS',
+    data: status,
+  });
+}
+
+// ======================
+// Utility Functions
+// ======================
+
+function isImageRequest(request) {
+  const url = new URL(request.url);
+  const imageExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.ico', '.avif'];
+  return imageExtensions.some(ext => url.pathname.toLowerCase().endsWith(ext));
+}
+
+async function trimCache(cacheName, maxItems) {
+  const cache = await caches.open(cacheName);
+  const keys = await cache.keys();
+
+  if (keys.length > maxItems) {
+    const keysToDelete = keys.slice(0, keys.length - maxItems);
+    await Promise.all(
+      keysToDelete.map((key) => cache.delete(key))
+    );
+    console.log(`[SW] Trimmed ${keysToDelete.length} items from ${cacheName}`);
+  }
+}
+
+// Log service worker version
+console.log('[SW] Service Worker v3 loaded');
