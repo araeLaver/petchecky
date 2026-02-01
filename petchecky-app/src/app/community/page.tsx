@@ -13,6 +13,7 @@ const CATEGORIES = [
   { id: "tip", label: "팁/정보", emoji: "!" },
   { id: "daily", label: "일상", emoji: "@" },
   { id: "review", label: "후기", emoji: "*" },
+  { id: "baby", label: "육아", emoji: "👶" },
 ];
 
 export default function CommunityPage() {
@@ -135,6 +136,7 @@ export default function CommunityPage() {
                           post.category === "question" ? "bg-purple-100 text-purple-700" :
                           post.category === "tip" ? "bg-green-100 text-green-700" :
                           post.category === "daily" ? "bg-blue-100 text-blue-700" :
+                          post.category === "baby" ? "bg-pink-100 text-pink-700" :
                           "bg-yellow-100 text-yellow-700"
                         }`}>
                           {categoryInfo.emoji} {categoryInfo.label}

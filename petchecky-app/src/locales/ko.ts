@@ -900,6 +900,37 @@ export const ko = {
     pageOf: "{current} / {total} 페이지",
     newWindow: "새 창에서 열림",
   },
+
+  // Baby mode
+  baby: {
+    appName: "베이비체키",
+    welcome: "베이비체키에 오신 걸 환영합니다!",
+    registerFirst: "아이를 등록하고 AI 육아 상담을 시작하세요.",
+    addChild: "아이 등록하기",
+    backToPet: "펫체키로 돌아가기",
+    dashboard: "대시보드",
+    aiConsult: "AI 상담",
+    growth: "성장 기록",
+    feeding: "수유 기록",
+    sleep: "수면 기록",
+    diaper: "기저귀 기록",
+    vaccination: "예방접종",
+    milestones: "발달 마일스톤",
+    medication: "투약 기록",
+    imageAnalysis: "증상 이미지 분석",
+    emergency: "소아과 응급",
+    childName: "이름",
+    childNamePlaceholder: "아이 이름",
+    birthDate: "생년월일",
+    gender: "성별",
+    male: "남아",
+    female: "여아",
+    birthWeight: "출생 체중",
+    birthHeight: "출생 신장",
+    bloodType: "혈액형",
+    save: "저장",
+    cancel: "취소",
+  },
 };
 
 export type TranslationKeys = typeof ko;

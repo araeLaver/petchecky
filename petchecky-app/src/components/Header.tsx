@@ -84,6 +84,15 @@ export default function Header({
         </button>
 
         <div className="flex items-center gap-3">
+          {/* 모드 전환 */}
+          <Link
+            href="/baby"
+            className="rounded-full bg-pink-100 px-3 py-1.5 text-xs font-medium text-pink-600 hover:bg-pink-200 transition-colors dark:bg-pink-900/30 dark:text-pink-400"
+            aria-label="베이비체키로 이동"
+          >
+            👶 베이비
+          </Link>
+
           {/* 펫 선택 드롭다운 */}
           <div className="relative" ref={menuRef}>
             <button

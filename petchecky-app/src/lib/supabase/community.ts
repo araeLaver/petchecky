@@ -5,7 +5,7 @@ export interface CommunityPost {
   user_id: string;
   title: string;
   content: string;
-  category: 'question' | 'tip' | 'daily' | 'review';
+  category: 'question' | 'tip' | 'daily' | 'review' | 'baby';
   pet_species?: 'dog' | 'cat';
   author_name: string;
   likes_count: number;

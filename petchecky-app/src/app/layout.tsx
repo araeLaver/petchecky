@@ -9,6 +9,7 @@ import { PushNotificationProvider } from "@/contexts/PushNotificationContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ToastProvider } from "@/contexts/ToastContext";
+import { AppModeProvider } from "@/contexts/AppModeContext";
 import OfflineIndicator from "@/components/OfflineIndicator";
 import ToastContainer from "@/components/Toast";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
@@ -155,6 +156,7 @@ export default function RootLayout({
                 <SubscriptionProvider>
                   <PushNotificationProvider>
                     <ToastProvider>
+                      <AppModeProvider>
                       <SkipNavigation />
                       <ServiceWorkerRegistration />
                       <OfflineIndicator />
@@ -166,6 +168,7 @@ export default function RootLayout({
                           {children}
                         </div>
                       </ErrorBoundary>
+                      </AppModeProvider>
                     </ToastProvider>
                   </PushNotificationProvider>
                 </SubscriptionProvider>

@@ -6,6 +6,8 @@ import { getErrorMessage } from "@/lib/errors";
 import { analyzeCombinedSeverity } from "@/lib/severity";
 import { validateChatRequest } from "@/lib/validations/chat";
 import { checkRateLimit, getClientIdentifier } from "@/lib/rateLimit";
+import { PET_SYSTEM_PROMPT } from "@/lib/prompts/pet-prompt";
+import { BABY_SYSTEM_PROMPT } from "@/lib/prompts/baby-prompt";
 
 const SYSTEM_PROMPT = `당신은 반려동물 건강 상담 AI 전문가 "펫체키"입니다.
 
@@ -78,7 +80,7 @@ export async function POST(request: NextRequest) {
     }
 
     const validatedData = validation.data;
-    const { message, petProfile: rawPetProfile, history, image } = validatedData;
+    const { message, petProfile: rawPetProfile, history, image, mode = "pet", childProfile } = validatedData;
 
     // 이미지 분석은 프리미엄+ 전용 (서버에서 검증된 구독 상태 사용)
     if (image && !isPremiumPlus) {
@@ -111,7 +113,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 펫 프로필 정제 (프롬프트 인젝션 방어)
-    const petProfile = sanitizePetProfile(rawPetProfile);
+    const petProfile = rawPetProfile ? sanitizePetProfile(rawPetProfile) : { name: "", species: "dog" as const, breed: "", age: 0, weight: 0 };
 
     // 사용자 메시지 정제 (프롬프트 인젝션 방어)
     const sanitizedMessage = sanitizeUserInput(message);
@@ -130,33 +132,50 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 정제된 데이터로 컨텍스트 생성
-    const petContext = `
+    // 모드에 따른 시스템 프롬프트 및 컨텍스트 생성
+    const isBabyMode = mode === "baby";
+    const activeSystemPrompt = isBabyMode ? BABY_SYSTEM_PROMPT : (PET_SYSTEM_PROMPT || SYSTEM_PROMPT);
+
+    let contextInfo = "";
+    let userLabel = "보호자";
+    let assistantLabel = isBabyMode ? "베이비체키" : "펫체키";
+
+    if (isBabyMode && childProfile) {
+      contextInfo = `
+아이 정보:
+- 이름: ${sanitizeUserInput(childProfile.name || "아이")}
+- 월령: ${childProfile.ageMonths || 0}개월
+- 성별: ${childProfile.gender === "male" ? "남아" : "여아"}${childProfile.birthWeight ? `\n- 출생 체중: ${childProfile.birthWeight}kg` : ""}`;
+    } else {
+      contextInfo = `
 반려동물 정보:
 - 이름: ${petProfile.name}
 - 종류: ${petProfile.species === "dog" ? "강아지" : "고양이"}
 - 품종: ${petProfile.breed}
 - 나이: ${petProfile.age}세
 - 체중: ${petProfile.weight}kg`;
+    }
 
     const conversationHistory = sanitizedHistory
-      .map((msg: { role: string; content: string }) => `${msg.role === "user" ? "보호자" : "펫체키"}: ${msg.content}`)
+      .map((msg: { role: string; content: string }) => `${msg.role === "user" ? userLabel : assistantLabel}: ${msg.content}`)
       .join("\n");
 
     // 이미지가 있는 경우 추가 안내
     const imagePrompt = image
-      ? `\n\n[이미지 분석 요청]\n보호자가 반려동물의 사진을 첨부했습니다. 이미지에서 보이는 증상이나 상태를 분석하고, 보호자의 질문과 함께 종합적인 건강 상담을 제공해주세요.`
+      ? isBabyMode
+        ? `\n\n[이미지 분석 요청]\n보호자가 아이의 증상 사진을 첨부했습니다. 이미지에서 보이는 증상이나 상태를 분석하고, 보호자의 질문과 함께 종합적인 건강 상담을 제공해주세요.`
+        : `\n\n[이미지 분석 요청]\n보호자가 반려동물의 사진을 첨부했습니다. 이미지에서 보이는 증상이나 상태를 분석하고, 보호자의 질문과 함께 종합적인 건강 상담을 제공해주세요.`
       : "";
 
     // 정제된 메시지 사용
-    const fullPrompt = `${SYSTEM_PROMPT}${imagePrompt}
+    const fullPrompt = `${activeSystemPrompt}${imagePrompt}
 
-${petContext}
+${contextInfo}
 
 ${conversationHistory ? `이전 대화:\n${conversationHistory}\n` : ""}
-보호자: ${sanitizedMessage}
+${userLabel}: ${sanitizedMessage}
 
-펫체키:`;
+${assistantLabel}:`;
 
     // API 요청 본문 구성
     const parts: Array<{ text: string } | { inline_data: { mime_type: string; data: string } }> = [];
@@ -229,7 +248,7 @@ ${conversationHistory ? `이전 대화:\n${conversationHistory}\n` : ""}
 
     // 응답 텍스트 정리
     const cleanMessage = rawText
-      .replace(/^펫체키:\s*/i, "")
+      .replace(/^(펫체키|베이비체키):\s*/i, "")
       .replace(/```[\s\S]*?```/g, "")
       .trim();
 

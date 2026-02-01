@@ -389,6 +389,68 @@ export function sendCommunityNotification(
   });
 }
 
+// ============ 베이비 알림 헬퍼 ============
+
+/**
+ * 아기 예방접종 리마인더 알림
+ */
+export function sendBabyVaccinationReminder(
+  childName: string,
+  vaccineName: string,
+  dueDate: string
+): Promise<Notification | null> {
+  return sendNotification(
+    'reminder',
+    `${childName}의 예방접종 알림`,
+    `${vaccineName} 예방접종 예정일이 ${dueDate}입니다.`,
+    { priority: 'high', link: '/baby/vaccination' }
+  );
+}
+
+/**
+ * 아기 발달 마일스톤 체크 알림
+ */
+export function sendMilestoneCheckReminder(
+  childName: string,
+  ageMonths: number
+): Promise<Notification | null> {
+  return sendNotification(
+    'reminder',
+    `${childName}의 발달 체크`,
+    `${ageMonths}개월 발달 마일스톤을 확인해보세요.`,
+    { priority: 'normal', link: '/baby/milestones' }
+  );
+}
+
+/**
+ * 아기 성장 기록 리마인더 알림
+ */
+export function sendGrowthRecordReminder(
+  childName: string
+): Promise<Notification | null> {
+  return sendNotification(
+    'health',
+    `${childName}의 성장 기록`,
+    '이번 달 체중/신장을 기록해주세요.',
+    { priority: 'normal', link: '/baby/growth' }
+  );
+}
+
+/**
+ * 아기 약물 복용 리마인더 알림
+ */
+export function sendBabyMedicationReminder(
+  childName: string,
+  medicationName: string
+): Promise<Notification | null> {
+  return sendNotification(
+    'reminder',
+    `${childName}의 약물 복용 시간`,
+    `${medicationName}을(를) 복용할 시간입니다.`,
+    { priority: 'high', link: '/baby/medication' }
+  );
+}
+
 /**
  * 예약 알림
  */

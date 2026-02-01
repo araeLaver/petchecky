@@ -49,16 +49,26 @@ export const ImageDataSchema = z.object({
     ),
 });
 
+// 아이 프로필 스키마 (baby mode)
+export const ChildProfileSchema = z.object({
+  name: z.string().max(50).optional(),
+  ageMonths: z.number().min(0).max(216).optional(),
+  gender: z.enum(["male", "female"]).optional(),
+  birthWeight: z.number().min(0).max(10).optional(),
+});
+
 // 채팅 API 요청 스키마
 export const ChatRequestSchema = z.object({
   message: z.string()
     .min(1, "메시지를 입력해주세요")
     .max(LIMITS.MESSAGE_MAX_LENGTH, `메시지는 ${LIMITS.MESSAGE_MAX_LENGTH}자 이내로 입력해주세요`),
-  petProfile: PetProfileSchema,
+  petProfile: PetProfileSchema.optional(),
   history: z.array(ChatMessageSchema)
     .max(LIMITS.MESSAGE_HISTORY_COUNT, `히스토리는 최대 ${LIMITS.MESSAGE_HISTORY_COUNT}개까지 가능합니다`)
     .default([]),
   image: ImageDataSchema.optional(),
+  mode: z.enum(["pet", "baby"]).default("pet"),
+  childProfile: ChildProfileSchema.optional(),
 });
 
 // 타입 추론
