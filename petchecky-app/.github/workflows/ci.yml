@@ -205,3 +205,80 @@ jobs:
           if (( $(echo "$TOTAL_SIZE_MB > 50" | bc -l) )); then
             echo "::warning::Bundle size exceeds 50MB threshold"
           fi
+
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: petchecky-app/package-lock.json
+
+      - name: Install dependencies
+        working-directory: petchecky-app
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: petchecky-app
+        run: npx playwright install --with-deps chromium
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: nextjs-build
+          path: petchecky-app/.next/
+
+      - name: Run E2E tests
+        working-directory: petchecky-app
+        run: npx playwright test --project=chromium
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: petchecky-app/playwright-report
+          retention-days: 7
+
+  lighthouse:
+    name: Lighthouse CI
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: petchecky-app/package-lock.json
+
+      - name: Install dependencies
+        working-directory: petchecky-app
+        run: npm ci
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: nextjs-build
+          path: petchecky-app/.next/
+
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v10
+        with:
+          configPath: petchecky-app/lighthouserc.json
+          uploadArtifacts: true
+          temporaryPublicStorage: true

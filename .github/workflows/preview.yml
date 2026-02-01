@@ -1,0 +1,169 @@
+name: Preview Deployment
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main, develop]
+
+env:
+  NODE_VERSION: '20'
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+jobs:
+  # ================================
+  # Deploy Preview
+  # ================================
+  preview:
+    name: Deploy Preview
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: petchecky-app
+
+    outputs:
+      preview-url: ${{ steps.deploy.outputs.url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: petchecky-app/package-lock.json
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: Pull Vercel Environment Information
+        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build Project Artifacts
+        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy to Vercel Preview
+        id: deploy
+        run: |
+          URL=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
+          echo "url=$URL" >> $GITHUB_OUTPUT
+          echo "Deployed to: $URL"
+
+  # ================================
+  # Comment on PR
+  # ================================
+  comment:
+    name: Comment Preview URL
+    runs-on: ubuntu-latest
+    needs: preview
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Find existing comment
+        uses: peter-evans/find-comment@v3
+        id: find-comment
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: '<!-- vercel-preview-comment -->'
+
+      - name: Create or update comment
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          edit-mode: replace
+          body: |
+            <!-- vercel-preview-comment -->
+            ## 🚀 Preview Deployment
+
+            | Name | Status | Preview |
+            |------|--------|---------|
+            | **petchecky-app** | ✅ Ready | [Visit Preview](${{ needs.preview.outputs.preview-url }}) |
+
+            <details>
+            <summary>Deployment Details</summary>
+
+            - **Commit:** ${{ github.event.pull_request.head.sha }}
+            - **Branch:** ${{ github.head_ref }}
+            - **Preview URL:** ${{ needs.preview.outputs.preview-url }}
+
+            </details>
+
+            ---
+            _Last updated: ${{ github.event.pull_request.updated_at }}_
+
+  # ================================
+  # Lighthouse Audit
+  # ================================
+  lighthouse:
+    name: Lighthouse Audit
+    runs-on: ubuntu-latest
+    needs: preview
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Wait for deployment
+        run: sleep 30
+
+      - name: Run Lighthouse
+        uses: treosh/lighthouse-ci-action@v11
+        id: lighthouse
+        with:
+          urls: |
+            ${{ needs.preview.outputs.preview-url }}
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+
+      - name: Format Lighthouse score
+        id: format
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const results = ${{ steps.lighthouse.outputs.manifest }}
+            const summary = results[0].summary
+
+            const formatScore = (score) => {
+              const percent = Math.round(score * 100)
+              if (percent >= 90) return `🟢 ${percent}`
+              if (percent >= 50) return `🟡 ${percent}`
+              return `🔴 ${percent}`
+            }
+
+            const comment = `
+            ## 🔦 Lighthouse Report
+
+            | Category | Score |
+            |----------|-------|
+            | Performance | ${formatScore(summary.performance)} |
+            | Accessibility | ${formatScore(summary.accessibility)} |
+            | Best Practices | ${formatScore(summary['best-practices'])} |
+            | SEO | ${formatScore(summary.seo)} |
+
+            [View Full Report](${{ steps.lighthouse.outputs.links }})
+            `
+
+            return comment
+
+      - name: Find Lighthouse comment
+        uses: peter-evans/find-comment@v3
+        id: find-lighthouse
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: '## 🔦 Lighthouse Report'
+
+      - name: Post Lighthouse results
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          comment-id: ${{ steps.find-lighthouse.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          edit-mode: replace
+          body: ${{ steps.format.outputs.result }}
