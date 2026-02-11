@@ -1,7 +1,7 @@
 /**
- * Next.js Security Middleware
+ * Next.js Security Proxy
  *
- * 보안 관련 미들웨어:
+ * 보안 관련 프록시:
  * - 요청 크기 제한
  * - 보안 로깅
  * - 의심스러운 요청 감지
@@ -104,7 +104,7 @@ function hasXssPattern(url: string): boolean {
   return xssPatterns.some((pattern) => pattern.test(decodeURIComponent(url)));
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const userAgent = request.headers.get("user-agent");
 
@@ -169,7 +169,7 @@ export function middleware(request: NextRequest) {
   return response;
 }
 
-// 미들웨어 적용 경로 설정
+// 프록시 적용 경로 설정
 export const config = {
   matcher: [
     /*
