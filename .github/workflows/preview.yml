@@ -114,7 +114,7 @@ jobs:
         run: sleep 30
 
       - name: Run Lighthouse
-        uses: treosh/lighthouse-ci-action@v11
+        uses: treosh/lighthouse-ci-action@v12
         id: lighthouse
         with:
           urls: |
