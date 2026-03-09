@@ -71,7 +71,7 @@ jobs:
           body-includes: '<!-- vercel-preview-comment -->'
 
       - name: Create or update comment
-        uses: peter-evans/create-or-update-comment@v4
+        uses: peter-evans/create-or-update-comment@v5
         with:
           comment-id: ${{ steps.find-comment.outputs.comment-id }}
           issue-number: ${{ github.event.pull_request.number }}
@@ -161,7 +161,7 @@ jobs:
           body-includes: '## 🔦 Lighthouse Report'
 
       - name: Post Lighthouse results
-        uses: peter-evans/create-or-update-comment@v4
+        uses: peter-evans/create-or-update-comment@v5
         with:
           comment-id: ${{ steps.find-lighthouse.outputs.comment-id }}
           issue-number: ${{ github.event.pull_request.number }}
